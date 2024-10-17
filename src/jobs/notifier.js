@@ -303,7 +303,7 @@ const formatDate = (date) => new Date(date).toLocaleDateString('en-IN', { year: 
   if (!niftyFiftyData || formatDate(niftyFiftyData.lastUpdated) !== formatDate(new Date())) {
     niftyFiftyData && console.info('Market Closed!');
 
-    return;
+    //return;
   }
 
   const portfolio = await getPortfolio();

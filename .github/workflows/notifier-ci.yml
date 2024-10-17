@@ -6,7 +6,7 @@ on:
       - '**'  # Runs on every branch
 
 jobs:
-  notify:
+  notify-ci:
     environment: development
     runs-on: ubuntu-latest
     timeout-minutes: 2
