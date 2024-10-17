@@ -1,0 +1,37 @@
+name: Notifier CI
+
+on:
+  pull_request:
+    branches:
+      - '**'  # Runs on every branch
+
+jobs:
+  notify:
+    environment: development
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Notify
+        run: npm run notify
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          TELEGRAM_API_TOKEN: ${{ secrets.TELEGRAM_API_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HTML_TO_IMAGE_USER_ID: ${{ secrets.HTML_TO_IMAGE_USER_ID }}
+          HTML_TO_IMAGE_API_KEY: ${{ secrets.HTML_TO_IMAGE_API_KEY }}
+          DB_NAME: ${{ vars.DB_NAME }}
+          DB_COLLECTION: ${{ vars.DB_COLLECTION }}
+          NIFTY_FIFTY_DATA_API_URL: ${{ vars.NIFTY_FIFTY_DATA_API_URL }}
+          STOCK_DATA_API_URL: ${{ vars.STOCK_DATA_API_URL }}
+          HTML_TO_IMAGE_API_URL: ${{ vars.HTML_TO_IMAGE_API_URL }}
