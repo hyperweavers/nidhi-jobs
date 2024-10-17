@@ -1,8 +1,7 @@
 name: Notifier
 
 on:
-  schedule:
-    - cron: '30 10 * * 1-5' # Every weekday @ 04:00 PM IST (10:30 AM UTC)
+  workflow_dispatch: # To trigger the action from REST API
 
 jobs:
   notify:

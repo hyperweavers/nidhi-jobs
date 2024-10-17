@@ -1,6 +1,7 @@
 name: Notifier CI
 
 on:
+  workflow_dispatch: # To trigger the action manually
   pull_request:
     branches:
       - '**'  # Runs on every branch

@@ -1,25 +1,25 @@
 {
-  "name": "stock-portfolio-notifier",
+  "name": "nidhi-jobs",
   "version": "1.0.0",
-  "description": "A stock market portfolio daily summary notifier.",
+  "description": "Background jobs for Nidhi applications.",
   "keywords": [
     "stock",
     "market",
     "monitor",
     "notifier"
   ],
-  "homepage": "https://github.com/k7moorthi/stock-portfolio-notifier#readme",
+  "homepage": "https://github.com/hyperweavers/nidhi-jobs#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/k7moorthi/stock-portfolio-notifier.git"
+    "url": "git+https://github.com/hyperweavers/nidhi-jobs.git"
   },
   "bugs": {
-    "url": "https://github.com/k7moorthi/stock-portfolio-notifier/issues"
+    "url": "https://github.com/hyperweavers/nidhi-jobs/issues"
   },
   "author": {
-    "name": "Kesavamoorthi Subramanian",
-    "email": "k7moorthi@gmail.com",
-    "url": "https://k7moorthi.github.io/"
+    "name": "Hyper Weavers",
+    "email": "info@hyperweavers.com",
+    "url": "https://hyperweavers.com"
   },
   "license": "AGPL-3.0-or-later",
   "private": true,
@@ -27,8 +27,8 @@
     "notify": "node ./src/jobs/notifier.js"
   },
   "dependencies": {
-    "axios": "^1.6.7",
-    "mongodb": "^6.3.0",
+    "axios": "^1.7.7",
+    "mongodb": "^6.9.0",
     "dotenv": "^16.4.5"
   }
 }
