@@ -25,3 +25,5 @@ jobs:
 
       - name: Extract
         run: npm run vatti:extract-post-office-savings-schemes
+        env:
+          POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB: ${{ secrets.POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB }}
