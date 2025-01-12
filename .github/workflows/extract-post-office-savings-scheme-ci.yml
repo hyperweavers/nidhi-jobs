@@ -1,7 +1,10 @@
 name: Post Office Savings Schemes Extractor - CI
 
 on:
-  workflow_dispatch: # To trigger the action from REST API
+  workflow_dispatch: # To trigger the action from REST APIpush:
+  push:
+    paths:
+      - src/jobs/vatti/post-office-savings-schemes-extractor.js
 
 jobs:
   extract-post-office-savings-schemes-ci:

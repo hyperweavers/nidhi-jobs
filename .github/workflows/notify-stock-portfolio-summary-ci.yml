@@ -2,9 +2,9 @@ name: Stock Portfolio Summary Notifier - CI
 
 on:
   workflow_dispatch: # To trigger the action manually
-  pull_request:
-    branches:
-      - '**'  # Runs on every branch
+  push:
+    paths:
+      - src/jobs/pangu/stock-portfolio-summary-notifier.js
 
 jobs:
   notify-stock-portfolio-summary-ci:
