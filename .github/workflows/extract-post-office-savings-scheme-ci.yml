@@ -1,0 +1,27 @@
+name: Post Office Savings Schemes Extractor - CI
+
+on:
+  workflow_dispatch: # To trigger the action from REST APIpush:
+  push:
+    paths:
+      - src/jobs/vatti/post-office-savings-schemes-extractor.js
+
+jobs:
+  extract-post-office-savings-schemes-ci:
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Extract
+        run: npm run vatti:extract-post-office-savings-schemes

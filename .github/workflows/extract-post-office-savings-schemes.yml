@@ -1,0 +1,38 @@
+name: Post Office Savings Schemes Extractor
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # At 10:30 AM UTC (04:00 PM IST) on 15th of January, April, July, and October (financial quarters).
+  schedule:
+    - cron: "30 10 15 JAN,APR,JUL,OCT *"
+
+jobs:
+  extract-post-office-savings-schemes:
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Extract
+        run: npm run vatti:extract-post-office-savings-schemes
+
+      - name: Save JSON to Vatti Site Repository
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          token: ${{ secrets.GH_NIDHI_DEPLOYMENT_TOKEN }}
+          folder: dist/post-office-savings-schemes.json
+          repository-name: 'hyperweavers/vatti-site'
+          branch: 'main'
+          commit-message: 'Update post office savings schemes'
+          clean: false

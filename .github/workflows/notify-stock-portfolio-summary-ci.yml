@@ -1,13 +1,13 @@
-name: Notifier CI
+name: Stock Portfolio Summary Notifier - CI
 
 on:
   workflow_dispatch: # To trigger the action manually
-  pull_request:
-    branches:
-      - '**'  # Runs on every branch
+  push:
+    paths:
+      - src/jobs/pangu/stock-portfolio-summary-notifier.js
 
 jobs:
-  notify-ci:
+  notify-stock-portfolio-summary-ci:
     environment: development
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -24,7 +24,7 @@ jobs:
         run: npm ci
 
       - name: Notify
-        run: npm run notify
+        run: npm run pangu:notify-stock-portfolio-summary
         env:
           DB_URL: ${{ secrets.DB_URL }}
           TELEGRAM_API_TOKEN: ${{ secrets.TELEGRAM_API_TOKEN }}

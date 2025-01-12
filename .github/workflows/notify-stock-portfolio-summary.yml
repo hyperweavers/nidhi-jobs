@@ -1,10 +1,10 @@
-name: Notifier
+name: Stock Portfolio Summary Notifier
 
 on:
   workflow_dispatch: # To trigger the action from REST API
 
 jobs:
-  notify:
+  notify-stock-portfolio-summary:
     environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -21,7 +21,7 @@ jobs:
         run: npm ci
 
       - name: Notify
-        run: npm run notify
+        run: npm run pangu:notify-stock-portfolio-summary
         env:
           DB_URL: ${{ secrets.DB_URL }}
           TELEGRAM_API_TOKEN: ${{ secrets.TELEGRAM_API_TOKEN }}
