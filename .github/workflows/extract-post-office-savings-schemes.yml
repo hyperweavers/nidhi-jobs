@@ -25,14 +25,4 @@ jobs:
         run: npm ci
 
       - name: Extract
-        run: npm run vatti:extract-post-office-savings-schemes
-
-      - name: Save JSON to Vatti Site Repository
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          token: ${{ secrets.GH_NIDHI_DEPLOYMENT_TOKEN }}
-          folder: dist/post-office-savings-schemes.json
-          repository-name: 'hyperweavers/vatti-site'
-          branch: 'main'
-          commit-message: 'Update post office savings schemes'
-          clean: false
+        run: npm run vatti:extract-post-office-savings-schemes -- --save

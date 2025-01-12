@@ -16,8 +16,12 @@
 
 const axios = require('axios');
 const cheerio = require('cheerio');
-const fs = require('fs');
-const path = require('path');
+
+require('dotenv').config();
+
+const save = process.argv.includes('--save');
+const POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB =
+  process.env.POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB || '';
 
 const url =
   'https://www.indiapost.gov.in/Financial/Pages/Content/Post-Office-Saving-Schemes.aspx';
@@ -162,30 +166,29 @@ async function extractInterestRates() {
       result.schemes.push(rowObject);
     });
 
-    const directoryPath = path.join(__dirname, '..', '..', '..', 'dist');
-    const filePath = path.join(
-      directoryPath,
-      'post-office-savings-schemes.json'
-    );
+    if (
+      result.effective.from &&
+      result.effective.to &&
+      result.schemes.length === 13
+    ) {
+      console.log(JSON.stringify(result, null, 2));
 
-    try {
-      // Ensure the directory exists
-      if (!fs.existsSync(directoryPath)) {
-        fs.mkdirSync(directoryPath);
+      if (save) {
+        if (!POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB) {
+          console.log('Skipping save as JSON Blob is empty.');
+          return;
+        }
+
+        const res = await axios.put(
+          `https://jsonblob.com/api/jsonBlob/${POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB}`,
+          result
+        );
+        console.log(
+          `POST request sent with response status code ${res.status}.`
+        );
       }
-
-      // Check if the file exists and delete it
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-
-      // Write the new JSON data to the file
-      fs.writeFileSync(filePath, JSON.stringify(result));
-      console.log(
-        'Interest rates data saved to dist/post-office-savings-schemes.json'
-      );
-    } catch (err) {
-      console.error(err);
+    } else {
+      console.error('Invalid output:', JSON.stringify(result, null, 2));
     }
   } catch (err) {
     console.error('Error extracting interest rates:', err.message);
