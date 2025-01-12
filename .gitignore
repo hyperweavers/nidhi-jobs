@@ -131,3 +131,6 @@ dist
 
 # MAC
 .DS_Store
+
+# Temp folder
+tmp
