@@ -3,9 +3,9 @@ name: Post Office Savings Schemes Extractor
 on:
   # Manual trigger
   workflow_dispatch:
-  # At 10:30 AM UTC (04:00 PM IST) on 15th of January, April, July, and October (financial quarters).
+  # At 10:30 AM UTC (04:00 PM IST) on 15th of every month.
   schedule:
-    - cron: "30 10 15 JAN,APR,JUL,OCT *"
+    - cron: "30 10 15 * *"
 
 jobs:
   extract-post-office-savings-schemes:

@@ -181,7 +181,8 @@ async function extractInterestRates() {
 
         const res = await axios.put(
           `https://jsonblob.com/api/jsonBlob/${POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB}`,
-          result
+          result,
+          { headers: { 'Content-Type': 'application/json' } }
         );
         console.log(
           `POST request sent with response status code ${res.status}.`

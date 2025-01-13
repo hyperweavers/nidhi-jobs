@@ -25,11 +25,13 @@
   "private": true,
   "scripts": {
     "pangu:notify-stock-portfolio-summary": "node ./src/jobs/pangu/stock-portfolio-summary-notifier.js",
-    "vatti:extract-post-office-savings-schemes": "node ./src/jobs/vatti/post-office-savings-schemes-extractor.js"
+    "vatti:extract-post-office-savings-schemes": "node ./src/jobs/vatti/post-office-savings-schemes-extractor.js",
+    "vatti:extract-rbi-policy-rates": "node ./src/jobs/vatti/rbi-policy-rates-extractor.js"
   },
   "dependencies": {
     "axios": "^1.7.7",
     "cheerio": "^1.0.0",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
     "mongodb": "^6.9.0"
   }
