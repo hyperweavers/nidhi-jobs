@@ -8,9 +8,10 @@ const save = process.argv.includes('--save');
 const RBI_POLICY_RATES_JSON_BLOB = process.env.RBI_POLICY_RATES_JSON_BLOB || '';
 
 async function extractPolicyRates() {
-  try {
-    const data = { lastUpdated: Date.now(), rbiPolicyRates: [] };
+  const data = { lastUpdated: Date.now(), rates: [] };
+  const rates = [];
 
+  try {
     const { data: html } = await axios.get(
       'https://website.rbi.org.in/web/rbi/policy-rate-archive'
     );
@@ -22,8 +23,6 @@ async function extractPolicyRates() {
     if (!table.length) {
       return data;
     }
-
-    const rbiPolicyRates = [];
 
     table.find('tr:not(.d-none)').each((index, row) => {
       // Skip header row
@@ -44,14 +43,13 @@ async function extractPolicyRates() {
           fixedReverseRepoRate: parseFloat($(columns[5]).text()) || null,
         };
 
-        rbiPolicyRates.push(rateEntry);
+        rates.push(rateEntry);
       }
     });
-
-    return { ...data, rbiPolicyRates };
   } catch (error) {
     console.error('Error fetching or processing data:', error);
-    return { rbiPolicyRates: [] };
+  } finally {
+    return { ...data, rates };
   }
 }
 
@@ -80,7 +78,7 @@ async function saveToJsonBlob(data) {
 async function main() {
   const data = await extractPolicyRates();
 
-  if (data.rbiPolicyRates.length === 0) {
+  if (data.rates.length === 0) {
     console.log('No data found');
     return;
   }

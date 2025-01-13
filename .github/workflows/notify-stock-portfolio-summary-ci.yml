@@ -2,12 +2,30 @@ name: Stock Portfolio Summary Notifier - CI
 
 on:
   workflow_dispatch: # To trigger the action manually
-  push:
-    paths:
-      - src/jobs/pangu/stock-portfolio-summary-notifier.js
+  pull_request:
+    branches:
+      - '**'  # Runs on every branch
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    # Required dorny/paths-filter
+    permissions:
+      pull-requests: read
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+    # For pull requests it's not necessary to checkout the code
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          src:
+            - 'src/jobs/pangu/stock-portfolio-summary-notifier.js'
+
   notify-stock-portfolio-summary-ci:
+    needs: changes
+    if: needs.changes.outputs.src == 'true'
     environment: development
     runs-on: ubuntu-latest
     timeout-minutes: 2

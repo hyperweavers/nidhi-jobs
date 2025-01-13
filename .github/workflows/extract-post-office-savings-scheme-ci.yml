@@ -2,12 +2,30 @@ name: Post Office Savings Schemes Extractor - CI
 
 on:
   workflow_dispatch: # To trigger the action from REST API
-  push:
-    paths:
-      - src/jobs/vatti/post-office-savings-schemes-extractor.js
+  pull_request:
+    branches:
+      - '**'  # Runs on every branch
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    # Required dorny/paths-filter
+    permissions:
+      pull-requests: read
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+    # For pull requests it's not necessary to checkout the code
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          src:
+            - 'src/jobs/vatti/post-office-savings-schemes-extractor.js'
+
   extract-post-office-savings-schemes-ci:
+    needs: changes
+    if: ${{ needs.changes.outputs.src == 'true' }}
     environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 2
