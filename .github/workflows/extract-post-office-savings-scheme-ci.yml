@@ -4,7 +4,7 @@ on:
   workflow_dispatch: # To trigger the action from REST API
   pull_request:
     branches:
-      - '**'  # Runs on every branch
+      - '**' # Runs on every branch
 
 jobs:
   changes:

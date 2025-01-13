@@ -1,4 +1,4 @@
-name: Banks in India Extractor - CI
+name: IBJA Gold Rates Extractor - CI
 
 on:
   workflow_dispatch: # To trigger the action from REST API
@@ -21,9 +21,9 @@ jobs:
       with:
         filters: |
           src:
-            - 'src/jobs/vatti/banks-in-india-extractor.js'
+            - 'src/jobs/vatti/ibja-gold-rates-extractor.js'
 
-  extract-banks-in-india-ci:
+  extract-ibja-gold-rates-ci:
     needs: changes
     if: ${{ needs.changes.outputs.src == 'true' }}
     environment: development
@@ -42,4 +42,4 @@ jobs:
         run: npm ci
 
       - name: Extract
-        run: npm run vatti:extract-banks-in-india
+        run: npm run vatti:extract-ibja-gold-rates
