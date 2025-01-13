@@ -1,7 +1,11 @@
 name: IBJA Gold Rates Extractor
 
 on:
-  workflow_dispatch: # To trigger the action from REST API
+  # Manual trigger
+  workflow_dispatch:
+  # At 04:00 AM UTC (09:30 AM IST) and 07:00 AM UTC (12:30 PM IST) on Monday to Friday.
+  schedule:
+    - cron: "0 4,7 * * 1-5"
 
 jobs:
   extract-ibja-gold-rates:
@@ -15,7 +19,8 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: '.nvmrc'
+          cache: 'npm' # Cache node_modules
 
       - name: Install Dependencies
         run: npm ci
