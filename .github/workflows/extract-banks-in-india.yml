@@ -1,0 +1,30 @@
+name: Banks in India Extractor
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # At 10:30 AM UTC (04:00 PM IST) on 5th of every month.
+  schedule:
+    - cron: "30 10 5 * *"
+
+jobs:
+  extract-banks-in-india:
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Extract
+        run: npm run vatti:extract-banks-in-india -- --save
+        env:
+          BANKS_IN_INDIA_JSON_BLOB: ${{ secrets.BANKS_IN_INDIA_JSON_BLOB }}
