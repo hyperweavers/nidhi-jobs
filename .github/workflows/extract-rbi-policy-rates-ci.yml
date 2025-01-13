@@ -1,4 +1,4 @@
-name: Post Office Savings Schemes Extractor - CI
+name: RBI Policy Rates Extractor - CI
 
 on:
   workflow_dispatch: # To trigger the action from REST API
@@ -21,9 +21,9 @@ jobs:
       with:
         filters: |
           src:
-            - 'src/jobs/vatti/post-office-savings-schemes-extractor.js'
+            - 'src/jobs/vatti/rbi-policy-rates-extractor.js'
 
-  extract-post-office-savings-schemes-ci:
+  extract-rbi-policy-rates-ci:
     needs: changes
     if: ${{ needs.changes.outputs.src == 'true' }}
     environment: development
@@ -42,4 +42,4 @@ jobs:
         run: npm ci
 
       - name: Extract
-        run: npm run vatti:extract-post-office-savings-schemes
+        run: npm run vatti:extract-rbi-policy-rates

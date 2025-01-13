@@ -1,4 +1,4 @@
-name: Post Office Savings Schemes Extractor
+name: RBI Policy Rates Extractor
 
 on:
   # Manual trigger
@@ -8,7 +8,7 @@ on:
     - cron: "30 10 15 * *"
 
 jobs:
-  extract-post-office-savings-schemes:
+  extract-rbi-policy-rates:
     environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -25,6 +25,6 @@ jobs:
         run: npm ci
 
       - name: Extract
-        run: npm run vatti:extract-post-office-savings-schemes -- --save
+        run: npm run vatti:extract-rbi-policy-rates -- --save
         env:
-          POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB: ${{ secrets.POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB }}
+          RBI_POLICY_RATES_JSON_BLOB: ${{ secrets.RBI_POLICY_RATES_JSON_BLOB }}
