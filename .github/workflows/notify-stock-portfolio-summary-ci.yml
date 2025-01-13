@@ -25,7 +25,7 @@ jobs:
 
   notify-stock-portfolio-summary-ci:
     needs: changes
-    if: needs.changes.outputs.src == 'true'
+    if: ${{ needs.changes.outputs.src == 'true' }}
     environment: development
     runs-on: ubuntu-latest
     timeout-minutes: 2
