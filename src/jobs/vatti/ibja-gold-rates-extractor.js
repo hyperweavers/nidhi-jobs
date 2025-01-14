@@ -1,6 +1,7 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { parse, getTime } = require('date-fns');
+const { fromZonedTime } = require('date-fns-tz');
 
 require('dotenv').config();
 
@@ -14,15 +15,22 @@ async function scrapeGoldRates() {
 
     const ratesTables = $('.rates-tbl');
 
-    // Process first node
+    // Process first node (div)
     const lastUpdatedText = ratesTables
       .first()
       .text()
       .replace(/\s+/g, ' ')
       .trim();
     const lastUpdatedMatch = lastUpdatedText.match(/Last updated time : (.+)/);
+
+    // Parse date in IST timezone
     const lastUpdated = lastUpdatedMatch
-      ? getTime(parse(lastUpdatedMatch[1], 'MMM dd yyyy hh:mma', new Date()))
+      ? getTime(
+          fromZonedTime(
+            parse(lastUpdatedMatch[1], 'MMM dd yyyy hh:mma', new Date()),
+            'Asia/Kolkata'
+          )
+        )
       : null;
 
     if (!lastUpdated) {
@@ -32,11 +40,14 @@ async function scrapeGoldRates() {
 
     const rates = [];
 
-    // Process second node
+    // Process second node (table)
     const secondTable = ratesTables.eq(1);
     if (secondTable.length) {
       const dateStr = secondTable.find('#txtRatedate').val();
-      const date = getTime(parse(dateStr, 'dd/MM/yyyy', new Date()));
+      // Parse date in IST timezone
+      const date = getTime(
+        fromZonedTime(parse(dateStr, 'dd/MM/yyyy', new Date()), 'Asia/Kolkata')
+      );
 
       secondTable.find('tbody tr').each((_, row) => {
         const columns = $(row).find('td');
@@ -54,7 +65,7 @@ async function scrapeGoldRates() {
       });
     }
 
-    // Process third node
+    // Process third node (table)
     const thirdTable = ratesTables.eq(2);
     if (thirdTable.length) {
       thirdTable.find('tbody tr').each((_, row) => {

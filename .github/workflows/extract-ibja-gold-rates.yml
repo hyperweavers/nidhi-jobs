@@ -3,9 +3,9 @@ name: IBJA Gold Rates Extractor
 on:
   # Manual trigger
   workflow_dispatch:
-  # At 04:00 AM UTC (09:30 AM IST) and 07:00 AM UTC (12:30 PM IST) on Monday to Friday.
+  # At 11:45 AM UTC (05:15 PM IST) on Monday to Friday.
   schedule:
-    - cron: "0 4,7 * * 1-5"
+    - cron: "45 11 * * 1-5"
 
 jobs:
   extract-ibja-gold-rates:
