@@ -5,17 +5,18 @@ require('dotenv').config();
 
 const save = process.argv.includes('--save');
 
-const BANKS_IN_INDIA_URL = process.env.BANKS_IN_INDIA_URL || '';
+const BANKS_IN_INDIA_DATA_SOURCE_URL =
+  process.env.BANKS_IN_INDIA_DATA_SOURCE_URL || '';
 const BANKS_IN_INDIA_JSON_BLOB = process.env.BANKS_IN_INDIA_JSON_BLOB || '';
 
 async function scrapeBanks() {
-  if (!BANKS_IN_INDIA_URL) {
+  if (!BANKS_IN_INDIA_DATA_SOURCE_URL) {
     console.error('URL is empty!');
     process.exit(1);
   }
 
   try {
-    const { data: html } = await axios.get(BANKS_IN_INDIA_URL);
+    const { data: html } = await axios.get(BANKS_IN_INDIA_DATA_SOURCE_URL);
     const $ = cheerio.load(html);
 
     const result = {

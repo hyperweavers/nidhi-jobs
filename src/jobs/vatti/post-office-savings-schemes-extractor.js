@@ -5,19 +5,21 @@ require('dotenv').config();
 
 const save = process.argv.includes('--save');
 
-const POST_OFFICE_SAVINGS_SCHEMES_URL =
-  process.env.POST_OFFICE_SAVINGS_SCHEMES_URL || '';
+const POST_OFFICE_SAVINGS_SCHEMES_DATA_SOURCE_URL =
+  process.env.POST_OFFICE_SAVINGS_SCHEMES_DATA_SOURCE_URL || '';
 const POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB =
   process.env.POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB || '';
 
 async function extractInterestRates() {
-  if (!POST_OFFICE_SAVINGS_SCHEMES_URL) {
+  if (!POST_OFFICE_SAVINGS_SCHEMES_DATA_SOURCE_URL) {
     console.error('URL is empty!');
     process.exit(1);
   }
 
   try {
-    const { data: html } = await axios.get(POST_OFFICE_SAVINGS_SCHEMES_URL);
+    const { data: html } = await axios.get(
+      POST_OFFICE_SAVINGS_SCHEMES_DATA_SOURCE_URL
+    );
     const $ = cheerio.load(html);
 
     const currentRates = await extractCurrentInterestRates($);

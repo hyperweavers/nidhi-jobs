@@ -4,7 +4,7 @@ on:
   workflow_dispatch: # To trigger the action from REST API
   pull_request:
     branches:
-      - '**' # Runs on every branch
+      - "**" # Runs on every branch
 
 jobs:
   changes:
@@ -15,13 +15,13 @@ jobs:
     outputs:
       src: ${{ steps.filter.outputs.src }}
     steps:
-    # For pull requests it's not necessary to checkout the code
-    - uses: dorny/paths-filter@v3
-      id: filter
-      with:
-        filters: |
-          src:
-            - 'src/jobs/vatti/rbi-policy-rates-extractor.js'
+      # For pull requests it's not necessary to checkout the code
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/jobs/vatti/rbi-policy-rates-extractor.js'
 
   extract-rbi-policy-rates-ci:
     needs: changes
@@ -36,11 +36,13 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm' # Cache node_modules
+          node-version-file: ".nvmrc"
+          cache: "npm" # Cache node_modules
 
       - name: Install Dependencies
         run: npm ci
 
       - name: Extract
         run: npm run vatti:extract-rbi-policy-rates
+        env:
+          RBI_POLICY_RATES_DATA_SOURCE_URL: ${{ vars.RBI_POLICY_RATES_DATA_SOURCE_URL }}

@@ -6,11 +6,12 @@ require('dotenv').config();
 
 const save = process.argv.includes('--save');
 
-const RBI_POLICY_RATES_URL = process.env.RBI_POLICY_RATES_URL || '';
+const RBI_POLICY_RATES_DATA_SOURCE_URL =
+  process.env.RBI_POLICY_RATES_DATA_SOURCE_URL || '';
 const RBI_POLICY_RATES_JSON_BLOB = process.env.RBI_POLICY_RATES_JSON_BLOB || '';
 
 async function extractPolicyRates() {
-  if (!RBI_POLICY_RATES_URL) {
+  if (!RBI_POLICY_RATES_DATA_SOURCE_URL) {
     console.error('URL is empty!');
     process.exit(1);
   }
@@ -19,7 +20,7 @@ async function extractPolicyRates() {
   const rates = [];
 
   try {
-    const { data: html } = await axios.get(RBI_POLICY_RATES_URL);
+    const { data: html } = await axios.get(RBI_POLICY_RATES_DATA_SOURCE_URL);
     const $ = cheerio.load(html);
     const table = $(
       '#_com_rbi_policy_rate_archive_RBIPolicyRateArchivePortlet_INSTANCE_uwbl_myContainerSearchContainer table'
@@ -40,8 +41,7 @@ async function extractPolicyRates() {
 
         const rateEntry = {
           effectiveDate: date?.getTime() || 0, // Convert to epoch
-          policyRepoRate:
-            parseFloat(sanitizeText($(columns[1]).text())) || 0,
+          policyRepoRate: parseFloat(sanitizeText($(columns[1]).text())) || 0,
           standingDepositFacilityRate:
             parseFloat(sanitizeText($(columns[2]).text())) || 0,
           marginalStandingFacilityRate:

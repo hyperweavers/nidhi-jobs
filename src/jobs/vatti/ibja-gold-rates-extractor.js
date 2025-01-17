@@ -7,17 +7,18 @@ require('dotenv').config();
 
 const save = process.argv.includes('--save');
 
-const IBJA_GOLD_RATES_URL = process.env.IBJA_GOLD_RATES_URL || '';
+const IBJA_GOLD_RATES_DATA_SOURCE_URL =
+  process.env.IBJA_GOLD_RATES_DATA_SOURCE_URL || '';
 const IBJA_GOLD_RATES_JSON_BLOB = process.env.IBJA_GOLD_RATES_JSON_BLOB || '';
 
 async function scrapeGoldRates() {
-  if (!IBJA_GOLD_RATES_URL) {
+  if (!IBJA_GOLD_RATES_DATA_SOURCE_URL) {
     console.error('URL is empty!');
     process.exit(1);
   }
 
   try {
-    const { data: html } = await axios.get(IBJA_GOLD_RATES_URL);
+    const { data: html } = await axios.get(IBJA_GOLD_RATES_DATA_SOURCE_URL);
     const $ = cheerio.load(html);
 
     const ratesTables = $('.rates-tbl');

@@ -19,8 +19,8 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm' # Cache node_modules
+          node-version-file: ".nvmrc"
+          cache: "npm" # Cache node_modules
 
       - name: Install Dependencies
         run: npm ci
@@ -29,3 +29,4 @@ jobs:
         run: npm run vatti:extract-post-office-savings-schemes -- --save
         env:
           POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB: ${{ secrets.POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB }}
+          POST_OFFICE_SAVINGS_SCHEMES_DATA_SOURCE_URL: ${{ vars.POST_OFFICE_SAVINGS_SCHEMES_DATA_SOURCE_URL }}
