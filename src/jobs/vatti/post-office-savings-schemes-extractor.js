@@ -13,7 +13,7 @@ const POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB =
 async function extractInterestRates() {
   if (!POST_OFFICE_SAVINGS_SCHEMES_URL) {
     console.error('URL is empty!');
-    return;
+    process.exit(1);
   }
 
   try {

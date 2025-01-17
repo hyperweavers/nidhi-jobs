@@ -13,7 +13,7 @@ const IBJA_GOLD_RATES_JSON_BLOB = process.env.IBJA_GOLD_RATES_JSON_BLOB || '';
 async function scrapeGoldRates() {
   if (!IBJA_GOLD_RATES_URL) {
     console.error('URL is empty!');
-    return;
+    process.exit(1);
   }
 
   try {

@@ -11,7 +11,7 @@ const BANKS_IN_INDIA_JSON_BLOB = process.env.BANKS_IN_INDIA_JSON_BLOB || '';
 async function scrapeBanks() {
   if (!BANKS_IN_INDIA_URL) {
     console.error('URL is empty!');
-    return;
+    process.exit(1);
   }
 
   try {

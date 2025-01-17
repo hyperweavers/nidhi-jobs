@@ -12,7 +12,7 @@ const RBI_POLICY_RATES_JSON_BLOB = process.env.RBI_POLICY_RATES_JSON_BLOB || '';
 async function extractPolicyRates() {
   if (!RBI_POLICY_RATES_URL) {
     console.error('URL is empty!');
-    return;
+    process.exit(1);
   }
 
   const data = { lastUpdated: Date.now(), rates: [] };
