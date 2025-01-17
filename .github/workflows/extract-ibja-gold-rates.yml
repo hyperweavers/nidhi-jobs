@@ -19,8 +19,8 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm' # Cache node_modules
+          node-version-file: ".nvmrc"
+          cache: "npm" # Cache node_modules
 
       - name: Install Dependencies
         run: npm ci
@@ -29,3 +29,4 @@ jobs:
         run: npm run vatti:extract-ibja-gold-rates -- --save
         env:
           IBJA_GOLD_RATES_JSON_BLOB: ${{ secrets.IBJA_GOLD_RATES_JSON_BLOB }}
+          IBJA_GOLD_RATES_DATA_SOURCE_URL: ${{ vars.IBJA_GOLD_RATES_DATA_SOURCE_URL }}

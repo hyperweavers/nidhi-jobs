@@ -4,7 +4,7 @@ on:
   workflow_dispatch: # To trigger the action manually
   pull_request:
     branches:
-      - '**' # Runs on every branch
+      - "**" # Runs on every branch
 
 jobs:
   changes:
@@ -15,13 +15,13 @@ jobs:
     outputs:
       src: ${{ steps.filter.outputs.src }}
     steps:
-    # For pull requests it's not necessary to checkout the code
-    - uses: dorny/paths-filter@v3
-      id: filter
-      with:
-        filters: |
-          src:
-            - 'src/jobs/pangu/stock-portfolio-summary-notifier.js'
+      # For pull requests it's not necessary to checkout the code
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/jobs/pangu/stock-portfolio-summary-notifier.js'
 
   notify-stock-portfolio-summary-ci:
     needs: changes
@@ -36,8 +36,8 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm' # Cache node_modules
+          node-version-file: ".nvmrc"
+          cache: "npm" # Cache node_modules
 
       - name: Install Dependencies
         run: npm ci

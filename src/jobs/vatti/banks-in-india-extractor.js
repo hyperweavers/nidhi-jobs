@@ -4,13 +4,19 @@ const cheerio = require('cheerio');
 require('dotenv').config();
 
 const save = process.argv.includes('--save');
+
+const BANKS_IN_INDIA_DATA_SOURCE_URL =
+  process.env.BANKS_IN_INDIA_DATA_SOURCE_URL || '';
 const BANKS_IN_INDIA_JSON_BLOB = process.env.BANKS_IN_INDIA_JSON_BLOB || '';
 
 async function scrapeBanks() {
+  if (!BANKS_IN_INDIA_DATA_SOURCE_URL) {
+    console.error('URL is empty!');
+    process.exit(1);
+  }
+
   try {
-    const { data: html } = await axios.get(
-      'https://website.rbi.org.in/web/rbi/important-websites/websites-of-banks-in-india'
-    );
+    const { data: html } = await axios.get(BANKS_IN_INDIA_DATA_SOURCE_URL);
     const $ = cheerio.load(html);
 
     const result = {
@@ -19,14 +25,14 @@ async function scrapeBanks() {
     };
 
     $('#Accordionheading').each((_, element) => {
-      const type = $(element).text().replaceAll('+', '').trim();
+      const type = sanitizeText($(element).text()).replaceAll('+', '').trim();
       const list = [];
 
       const sibling = $(element).next();
 
       sibling.find('a').each((_, bankElement) => {
         list.push({
-          name: $(bankElement).text().replaceAll('%', '').trim(),
+          name: sanitizeText($(bankElement).text()).replaceAll('%', '').trim(),
           website: $(bankElement).attr('href'),
         });
       });
@@ -71,6 +77,13 @@ async function scrapeBanks() {
   } catch (error) {
     console.error('Error:', error.message);
   }
+}
+
+function sanitizeText(text) {
+  return text
+    .replace(/[^\x00-\x7F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 scrapeBanks();

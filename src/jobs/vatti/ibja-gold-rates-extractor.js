@@ -6,21 +6,25 @@ const { fromZonedTime } = require('date-fns-tz');
 require('dotenv').config();
 
 const save = process.argv.includes('--save');
+
+const IBJA_GOLD_RATES_DATA_SOURCE_URL =
+  process.env.IBJA_GOLD_RATES_DATA_SOURCE_URL || '';
 const IBJA_GOLD_RATES_JSON_BLOB = process.env.IBJA_GOLD_RATES_JSON_BLOB || '';
 
 async function scrapeGoldRates() {
+  if (!IBJA_GOLD_RATES_DATA_SOURCE_URL) {
+    console.error('URL is empty!');
+    process.exit(1);
+  }
+
   try {
-    const { data: html } = await axios.get('https://ibjarates.com');
+    const { data: html } = await axios.get(IBJA_GOLD_RATES_DATA_SOURCE_URL);
     const $ = cheerio.load(html);
 
     const ratesTables = $('.rates-tbl');
 
     // Process first node (div)
-    const lastUpdatedText = ratesTables
-      .first()
-      .text()
-      .replace(/\s+/g, ' ')
-      .trim();
+    const lastUpdatedText = sanitizeText(ratesTables.first().text());
     const lastUpdatedMatch = lastUpdatedText.match(/Last updated time : (.+)/);
 
     // Parse date in IST timezone
@@ -31,7 +35,7 @@ async function scrapeGoldRates() {
             'Asia/Kolkata'
           )
         )
-      : null;
+      : 0;
 
     if (!lastUpdated) {
       console.log('Last updated time not found');
@@ -45,20 +49,24 @@ async function scrapeGoldRates() {
     if (secondTable.length) {
       const dateStr = secondTable.find('#txtRatedate').val();
       // Parse date in IST timezone
-      const date = getTime(
-        fromZonedTime(parse(dateStr, 'dd/MM/yyyy', new Date()), 'Asia/Kolkata')
-      );
+      const date =
+        getTime(
+          fromZonedTime(
+            parse(dateStr, 'dd/MM/yyyy', new Date()),
+            'Asia/Kolkata'
+          )
+        ) || 0;
 
       secondTable.find('tbody tr').each((_, row) => {
         const columns = $(row).find('td');
         if (columns.length >= 4) {
           rates.push({
             date,
-            metal: $(columns[0]).text().trim(),
-            purity: parseFloat($(columns[1]).text()),
+            metal: sanitizeText($(columns[0]).text()),
+            purity: parseFloat(sanitizeText($(columns[1]).text())),
             rate: {
-              forenoon: parseFloat($(columns[2]).text()) || null,
-              afternoon: parseFloat($(columns[3]).text()) || null,
+              forenoon: parseFloat(sanitizeText($(columns[2]).text())) || 0,
+              afternoon: parseFloat(sanitizeText($(columns[3]).text())) || 0,
             },
           });
         }
@@ -73,11 +81,11 @@ async function scrapeGoldRates() {
         if (columns.length >= 4) {
           rates.push({
             date: lastUpdated,
-            metal: $(columns[0]).text().trim(),
-            purity: parseFloat($(columns[1]).text()),
+            metal: sanitizeText($(columns[0]).text()),
+            purity: parseFloat(sanitizeText($(columns[1]).text())),
             rate: {
-              forenoon: parseFloat($(columns[2]).text()) || null,
-              afternoon: parseFloat($(columns[3]).text()) || null,
+              forenoon: parseFloat(sanitizeText($(columns[2]).text())) || 0,
+              afternoon: parseFloat(sanitizeText($(columns[3]).text())) || 0,
             },
           });
         }
@@ -92,6 +100,13 @@ async function scrapeGoldRates() {
     console.error('Error scraping gold rates:', error);
     return null;
   }
+}
+
+function sanitizeText(text) {
+  return text
+    .replace(/[^\x00-\x7F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 async function main() {
