@@ -5,16 +5,21 @@ const { parse } = require('date-fns');
 require('dotenv').config();
 
 const save = process.argv.includes('--save');
+
+const RBI_POLICY_RATES_URL = process.env.RBI_POLICY_RATES_URL || '';
 const RBI_POLICY_RATES_JSON_BLOB = process.env.RBI_POLICY_RATES_JSON_BLOB || '';
 
 async function extractPolicyRates() {
+  if (!RBI_POLICY_RATES_URL) {
+    console.error('URL is empty!');
+    return;
+  }
+
   const data = { lastUpdated: Date.now(), rates: [] };
   const rates = [];
 
   try {
-    const { data: html } = await axios.get(
-      'https://website.rbi.org.in/web/rbi/policy-rate-archive'
-    );
+    const { data: html } = await axios.get(RBI_POLICY_RATES_URL);
     const $ = cheerio.load(html);
     const table = $(
       '#_com_rbi_policy_rate_archive_RBIPolicyRateArchivePortlet_INSTANCE_uwbl_myContainerSearchContainer table'
@@ -30,17 +35,20 @@ async function extractPolicyRates() {
 
       const columns = $(row).find('td');
       if (columns.length >= 6) {
-        const dateText = $(columns[0]).text().trim();
+        const dateText = sanitizeText($(columns[0]).text());
         const date = parse(dateText, 'MMM dd, yyyy', new Date());
 
         const rateEntry = {
-          effectiveDate: date.getTime(), // Convert to epoch
-          policyRepoRate: parseFloat($(columns[1]).text()) || null,
-          standingDepositFacilityRate: parseFloat($(columns[2]).text()) || null,
+          effectiveDate: date?.getTime() || 0, // Convert to epoch
+          policyRepoRate:
+            parseFloat(sanitizeText($(columns[1]).text())) || 0,
+          standingDepositFacilityRate:
+            parseFloat(sanitizeText($(columns[2]).text())) || 0,
           marginalStandingFacilityRate:
-            parseFloat($(columns[3]).text()) || null,
-          bankRate: parseFloat($(columns[4]).text()) || null,
-          fixedReverseRepoRate: parseFloat($(columns[5]).text()) || null,
+            parseFloat(sanitizeText($(columns[3]).text())) || 0,
+          bankRate: parseFloat(sanitizeText($(columns[4]).text())) || 0,
+          fixedReverseRepoRate:
+            parseFloat(sanitizeText($(columns[5]).text())) || 0,
         };
 
         rates.push(rateEntry);
@@ -73,6 +81,13 @@ async function saveToJsonBlob(data) {
     console.error('Error saving to JSON Blob:', error);
     return false;
   }
+}
+
+function sanitizeText(text) {
+  return text
+    .replace(/[^\x00-\x7F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 async function main() {
