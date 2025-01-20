@@ -29,16 +29,16 @@ async function extractInterestRates() {
       ...currentRates,
       schemes: currentRates.schemes.map((scheme) => ({
         ...scheme,
-        historicInterestRates: scheme.shortName.startsWith('TD-')
+        historicInterestRates: scheme.id.startsWith('TD-')
           ? (historicRates['TD'] || []).map((historicRate) => ({
               ...historicRate,
               interestRate:
                 historicRate.interestRate.filter(
                   (historicInterestRate) =>
-                    scheme.shortName === `TD-${historicInterestRate.tenure}Y`
+                    scheme.id === `TD-${historicInterestRate.tenure}Y`
                 )[0]?.interestRate || 0,
             }))
-          : historicRates[scheme.shortName] || [],
+          : historicRates[scheme.id] || [],
       })),
     };
 
@@ -133,6 +133,8 @@ async function extractCurrentInterestRates($) {
     schemes: [],
   };
 
+  let sbInterestRate;
+
   table.find('tbody tr').each((_, row) => {
     const cells = $(row).children('td');
 
@@ -151,48 +153,74 @@ async function extractCurrentInterestRates($) {
         ? sanitizeText($(cells.get(compoundingIndex)).text())
         : '';
 
-    const { name, shortName, recurring, tenure, maturity } =
-      extractTitleAndTenure(instrumentsText);
-
-    const { interestRate, maturesIn } = parseInterestRate(interestText);
-
-    let { frequency, payout } = parseCompounding(compoundingText);
-    if (shortName === 'SB') {
-      payout = true;
-      frequency = 'Annually';
-    }
-
-    const frequencyPerYear = compoundingFrequencyStringToValue(frequency);
-
-    let effectiveYield = interestRate;
-    if (payout) {
-      effectiveYield =
-        (Math.pow(
-          1 + interestRate / 100 / (frequencyPerYear * tenure),
-          frequencyPerYear * tenure
-        ) -
-          1) *
-        100;
-      effectiveYield =
-        Math.round((effectiveYield + Number.EPSILON) * 100) / 100;
-    }
-    effectiveYield = effectiveYield || interestRate;
-
-    const rowObject = {
+    const {
+      id,
       name,
-      shortName,
-      interestRate,
-      effectiveYield,
-      depositTenure: recurring ? tenure : 0,
-      maturityTenure: maturity || maturesIn,
-      compounding: {
-        payout,
-        frequency,
-        frequencyPerYear,
-      },
-    };
+      recurring,
+      tenure,
+      maturity,
+      interestPayoutFrequencyPerYear,
+      fixedInterestRate,
+      preMaturityPenalty,
+      taxExemption,
+      limit,
+    } = extractTitleAndTenure(instrumentsText);
 
-    result.schemes.push(rowObject);
+    if (id) {
+      const { interestRate, maturesIn } = parseInterestRate(interestText);
+
+      let frequency = parseCompounding(compoundingText);
+      if (id === 'SB') {
+        payout = true;
+        frequency = 'Annually';
+        sbInterestRate = interestRate;
+      }
+
+      const frequencyPerYear = compoundingFrequencyStringToValue(frequency);
+
+      let updatedPreMaturityPenalty = preMaturityPenalty;
+      if (preMaturityPenalty.length > 0) {
+        updatedPreMaturityPenalty = preMaturityPenalty
+          .filter((penalty) => !!penalty)
+          .map((penalty) => {
+            const { interestDeduction, ...updatedPenalty } = penalty;
+            let interest;
+
+            if (interestDeduction === null) {
+              interest = null;
+            } else {
+              if (interestDeduction >= 0) {
+                interest = interestRate - interestDeduction;
+              } else {
+                interest = 0;
+              }
+            }
+
+            return {
+              ...updatedPenalty,
+              interestRate: interest
+                ? Math.round((interest + Number.EPSILON) * 10) / 10
+                : interest,
+            };
+          });
+      }
+
+      const rowObject = {
+        id,
+        name,
+        interestRate,
+        depositTenure: recurring ? tenure : 0,
+        maturityTenure: maturity || maturesIn,
+        compoundingFrequencyPerYear: frequencyPerYear,
+        interestPayoutFrequencyPerYear,
+        fixedInterestRate,
+        preMaturityPenalty: updatedPreMaturityPenalty,
+        taxExemption,
+        limit,
+      };
+
+      result.schemes.push(rowObject);
+    }
   });
 
   if (
@@ -200,7 +228,31 @@ async function extractCurrentInterestRates($) {
     result.effective.to &&
     result.schemes.length === 13
   ) {
-    return result;
+    return {
+      ...result,
+      schemes: result.schemes.map((scheme) => {
+        if (scheme.preMaturityPenalty.length > 0) {
+          if (
+            scheme.preMaturityPenalty.some((penalty) => !penalty.interestRate)
+          ) {
+            return {
+              ...scheme,
+              preMaturityPenalty: scheme.preMaturityPenalty.map((penalty) => ({
+                ...penalty,
+                interestRate:
+                  penalty.interestRate === null
+                    ? sbInterestRate || -1
+                    : penalty.interestRate,
+              })),
+            };
+          } else {
+            return scheme;
+          }
+        } else {
+          return scheme;
+        }
+      }),
+    };
   } else {
     throw new Error('Invalid output');
   }
@@ -356,41 +408,34 @@ function parseInterestRate(interestCellText) {
 }
 
 function parseCompounding(compoundingCellText) {
-  let payout = true;
-  let frequency = compoundingCellText;
-
-  if (normalizeText(compoundingCellText).includes('and paid')) {
-    payout = false;
-    frequency = frequency.replace(/and paid/i, '').trim();
-  }
-
-  return {
-    payout,
-    frequency,
-  };
+  return compoundingCellText.replace(/and paid/i, '').trim();
 }
 
 function extractTitleAndTenure(instrumentsText) {
   const normalized = normalizeText(instrumentsText);
-  if (normalized.includes('time deposit')) {
-    const match = instrumentsText.match(/(\d+)\s*year\s*time deposit/i);
 
-    if (match) {
-      const tenure = parseInt(match[1], 10);
-      return {
-        name: 'Time Deposit',
-        shortName: `TD-${tenure}Y`,
-        recurring: false,
-        tenure: tenure,
-        maturity: tenure,
-      };
-    }
+  if (normalized.includes('post office savings account')) {
     return {
-      name: 'Time Deposit',
-      shortName: `TD`,
-      recurring: false,
+      id: 'SB',
+      name: instrumentsText,
+      recurring: true,
       tenure: 0,
       maturity: 0,
+      interestPayoutFrequencyPerYear: 1,
+      fixedInterestRate: false,
+      preMaturityPenalty: [],
+      taxExemption: {
+        principal: 0,
+        interest: 10000,
+      },
+      limit: {
+        min: 500,
+        max: {
+          individual: 0,
+          joint: 0,
+        },
+        multiples: 0,
+      },
     };
   }
 
@@ -401,111 +446,361 @@ function extractTitleAndTenure(instrumentsText) {
     if (match) {
       const tenure = parseInt(match[1], 10);
       return {
+        id: 'RD',
         name: 'Recurring Deposit',
-        shortName: 'RD',
         recurring: true,
         tenure: tenure,
         maturity: tenure,
+        interestPayoutFrequencyPerYear: 0,
+        fixedInterestRate: true,
+        preMaturityPenalty: [
+          {
+            from: 3 * 365 + 1,
+            to: 0,
+            interestDeduction: null, // Replace with SB interest
+          },
+        ],
+        taxExemption: {
+          principal: 0,
+          interest: 0,
+        },
+        limit: {
+          min: 100,
+          max: {
+            individual: 0,
+            joint: 0,
+          },
+          multiples: 10,
+        },
       };
     }
     return {
+      id: '',
       name: 'Recurring Deposit',
-      shortName: 'RD',
       recurring: true,
       tenure: 0,
       maturity: 0,
+      interestPayoutFrequencyPerYear: 0,
+      fixedInterestRate: true,
+      preMaturityPenalty: [],
+      taxExemption: {
+        principal: 0,
+        interest: 0,
+      },
+      limit: {
+        min: 100,
+        max: {
+          individual: 0,
+          joint: 0,
+        },
+        multiples: 10,
+      },
     };
   }
 
-  if (normalized.includes('national savings certificate')) {
+  if (normalized.includes('time deposit')) {
+    const match = instrumentsText.match(/(\d+)\s*year\s*time deposit/i);
+
+    if (match) {
+      const tenure = parseInt(match[1], 10);
+      return {
+        id: `TD-${tenure}Y`,
+        name: `Time Deposit (${tenure} Year)`,
+        recurring: false,
+        tenure: tenure,
+        maturity: tenure,
+        interestPayoutFrequencyPerYear: 1,
+        fixedInterestRate: true,
+        preMaturityPenalty: [
+          {
+            from: 0.5 * 365 + 1,
+            to: 1 * 365,
+            interestDeduction: null, // Replace with SB interest
+          },
+          tenure > 1
+            ? {
+                from: 1 * 366 + 1,
+                to: 0,
+                interestDeduction: 2,
+              }
+            : undefined,
+        ],
+        taxExemption: {
+          principal: tenure === 5 ? 150000 : 0,
+          interest: 0,
+        },
+        limit: {
+          min: 1000,
+          max: {
+            individual: 0,
+            joint: 0,
+          },
+          multiples: 100,
+        },
+      };
+    }
     return {
-      name: instrumentsText,
-      shortName: 'NSC',
+      id: '',
+      name: 'Time Deposit',
       recurring: false,
-      tenure: 5,
-      maturity: 5,
-    };
-  }
-
-  if (normalized.includes('mahila samman savings certificate')) {
-    return {
-      name: instrumentsText,
-      shortName: 'MSSC',
-      recurring: false,
-      tenure: 2,
-      maturity: 2,
-    };
-  }
-
-  if (normalized.includes('sukanya samriddhi account scheme')) {
-    return {
-      name: instrumentsText.replace('Scheme', '').trim(),
-      shortName: 'SSA',
-      recurring: true,
-      tenure: 15,
-      maturity: 21,
-    };
-  }
-
-  if (normalized.includes('public provident fund scheme')) {
-    return {
-      name: instrumentsText.replace('Scheme', '').trim(),
-      shortName: 'PPF',
-      recurring: true,
-      tenure: 15,
-      maturity: 15,
-    };
-  }
-
-  if (normalized.includes('senior citizen savings scheme')) {
-    return {
-      name: instrumentsText,
-      shortName: 'SCSS',
-      recurring: false,
-      tenure: 5,
-      maturity: 5,
+      tenure: 0,
+      maturity: 0,
+      interestPayoutFrequencyPerYear: 1,
+      fixedInterestRate: true,
+      preMaturityPenalty: [],
+      taxExemption: {
+        principal: 0,
+        interest: 0,
+      },
+      limit: {
+        min: 1000,
+        max: {
+          individual: 0,
+          joint: 0,
+        },
+        multiples: 100,
+      },
     };
   }
 
   if (normalized.includes('monthly income account')) {
     return {
+      id: 'MIS',
       name: instrumentsText.replace('Account', 'Scheme').trim(),
-      shortName: 'MIS',
       recurring: false,
       tenure: 5,
       maturity: 5,
+      interestPayoutFrequencyPerYear: 12,
+      fixedInterestRate: true,
+      preMaturityPenalty: [
+        {
+          from: 1 * 365 + 1,
+          to: 3 * 365,
+          interestDeduction: 2,
+        },
+        {
+          from: 3 * 365 + 1,
+          to: 0,
+          interestDeduction: 1,
+        },
+      ],
+      taxExemption: {
+        principal: 0,
+        interest: 0,
+      },
+      limit: {
+        min: 1000,
+        max: {
+          individual: 900000,
+          joint: 1500000,
+        },
+        multiples: 1000,
+      },
     };
   }
 
-  if (normalized.includes('post office savings account')) {
+  if (normalized.includes('senior citizen savings scheme')) {
     return {
+      id: 'SCSS',
       name: instrumentsText,
-      shortName: 'SB',
+      recurring: false,
+      tenure: 5,
+      maturity: 5,
+      interestPayoutFrequencyPerYear: 4,
+      fixedInterestRate: true,
+      preMaturityPenalty: [
+        {
+          from: 1,
+          to: 1 * 365,
+          interestDeduction: -1, // No Interest
+        },
+        {
+          from: 1 * 365 + 1,
+          to: 2 * 365,
+          interestDeduction: 1.5,
+        },
+        {
+          from: 2 * 365 + 1,
+          to: 0,
+          interestDeduction: 1,
+        },
+      ],
+      taxExemption: {
+        principal: 150000,
+        interest: 50000,
+      },
+      limit: {
+        min: 1000,
+        max: {
+          individual: 3000000,
+          joint: 3000000,
+        },
+        multiples: 1000,
+      },
+    };
+  }
+
+  if (normalized.includes('public provident fund scheme')) {
+    return {
+      id: 'PPF',
+      name: instrumentsText.replace('Scheme', '').trim(),
       recurring: true,
-      tenure: 0,
-      maturity: 0,
+      tenure: 15,
+      maturity: 15,
+      interestPayoutFrequencyPerYear: 0,
+      fixedInterestRate: false,
+      preMaturityPenalty: [
+        {
+          from: 5 * 365 + 1, // After 5 years from the end of the year
+          to: 0,
+          interestDeduction: 1,
+        },
+      ],
+      taxExemption: {
+        principal: 150000,
+        interest: -1,
+      },
+      limit: {
+        min: 500,
+        max: {
+          individual: 150000,
+        },
+        multiples: 50,
+      },
+    };
+  }
+
+  if (normalized.includes('sukanya samriddhi account scheme')) {
+    return {
+      id: 'SSA',
+      name: instrumentsText.replace('Scheme', '').trim(),
+      recurring: true,
+      tenure: 15,
+      maturity: 21,
+      interestPayoutFrequencyPerYear: 0,
+      fixedInterestRate: false,
+      preMaturityPenalty: [], // Not Allowed
+      taxExemption: {
+        principal: 150000,
+        interest: -1,
+      },
+      limit: {
+        min: 250,
+        max: {
+          individual: 150000,
+        },
+        multiples: 50,
+      },
+    };
+  }
+
+  if (normalized.includes('national savings certificate')) {
+    return {
+      id: 'NSC',
+      name: instrumentsText,
+      recurring: false,
+      tenure: 5,
+      maturity: 5,
+      interestPayoutFrequencyPerYear: 0,
+      fixedInterestRate: true,
+      preMaturityPenalty: [], // Not Allowed
+      taxExemption: {
+        principal: 150000,
+        interest: 0,
+      },
+      limit: {
+        min: 1000,
+        max: {
+          individual: 0,
+          joint: 0,
+        },
+        multiples: 100,
+      },
     };
   }
 
   if (normalized.includes('kisan vikas patra')) {
     return {
+      id: 'KVP',
       name: instrumentsText,
-      shortName: 'KVP',
       recurring: false,
       tenure: 0,
       maturity: 0,
+      interestPayoutFrequencyPerYear: 0,
+      fixedInterestRate: true,
+      preMaturityPenalty: [
+        {
+          from: 2.5 * 365 + 1,
+          to: 0,
+          interestDeduction: 0, // No Penalty
+        },
+      ],
+      taxExemption: {
+        principal: 0,
+        interest: 0,
+      },
+      limit: {
+        min: 1000,
+        max: {
+          individual: 0,
+          joint: 0,
+        },
+        multiples: 100,
+      },
+    };
+  }
+
+  if (normalized.includes('mahila samman savings certificate')) {
+    return {
+      id: 'MSSC',
+      name: instrumentsText,
+      recurring: false,
+      tenure: 2,
+      maturity: 2,
+      interestPayoutFrequencyPerYear: 0,
+      fixedInterestRate: true,
+      preMaturityPenalty: [
+        {
+          from: 0.5 * 365 + 1,
+          to: 0,
+          interestDeduction: 2,
+        },
+      ],
+      taxExemption: {
+        principal: 0,
+        interest: 0,
+      },
+      limit: {
+        min: 1000,
+        max: {
+          individual: 200000,
+        },
+        multiples: 100,
+      },
     };
   }
 
   return {
+    id: '',
     name: instrumentsText,
-    shortName: instrumentsText
-      .split(' ')
-      .map((n) => n[0])
-      .join(''),
     recurring: false,
     tenure: 0,
     maturity: 0,
+    interestPayoutFrequencyPerYear: 0,
+    fixedInterestRate: true,
+    preMaturityPenalty: [],
+    taxExemption: {
+      principal: 0,
+      interest: 0,
+    },
+    limit: {
+      min: 0,
+      max: {
+        individual: 0,
+        joint: 0,
+      },
+      multiples: 0,
+    },
   };
 }
 
