@@ -1,0 +1,32 @@
+name: Income Tax Slabs Extractor
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # At 10:30 AM UTC (04:00 PM IST) on Feb 15th.
+  schedule:
+    - cron: "30 10 15 2 *"
+
+jobs:
+  extract-income-tax-slabs:
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm" # Cache node_modules
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Extract
+        run: npm run vatti:extract-income-tax-slabs -- --save
+        env:
+          INCOME_TAX_SLABS_JSON_BLOB: ${{ secrets.INCOME_TAX_SLABS_JSON_BLOB }}
+          INCOME_TAX_SLABS_DATA_SOURCE_URL: ${{ vars.INCOME_TAX_SLABS_DATA_SOURCE_URL }}

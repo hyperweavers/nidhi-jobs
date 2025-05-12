@@ -1,7 +1,7 @@
 name: Post Office Savings Schemes Extractor - CI
 
 on:
-  workflow_dispatch: # To trigger the action from REST API
+  workflow_dispatch: # Manual trigger
   pull_request:
     branches:
       - "**" # Runs on every branch
