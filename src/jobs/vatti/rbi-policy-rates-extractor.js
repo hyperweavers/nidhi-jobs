@@ -4,6 +4,8 @@ const { parse } = require('date-fns');
 
 require('dotenv').config();
 
+require('../../utils/axios.utils');
+
 const save = process.argv.includes('--save');
 
 const RBI_POLICY_RATES_DATA_SOURCE_URL =

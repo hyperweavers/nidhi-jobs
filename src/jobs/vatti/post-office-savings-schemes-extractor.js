@@ -3,6 +3,8 @@ const cheerio = require('cheerio');
 
 require('dotenv').config();
 
+require('../../utils/axios.utils');
+
 const save = process.argv.includes('--save');
 
 const POST_OFFICE_SAVINGS_SCHEMES_DATA_SOURCE_URL =

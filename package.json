@@ -31,11 +31,12 @@
     "vatti:extract-ibja-gold-rates": "node ./src/jobs/vatti/ibja-gold-rates-extractor.js"
   },
   "dependencies": {
-    "axios": "^1.7.7",
+    "axios": "^1.9.0",
+    "axios-retry": "^4.5.0",
     "cheerio": "^1.0.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
-    "dotenv": "^16.4.5",
-    "mongodb": "^6.9.0"
+    "dotenv": "^16.5.0",
+    "mongodb": "^6.16.0"
   }
 }

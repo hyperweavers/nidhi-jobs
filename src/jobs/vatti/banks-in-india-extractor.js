@@ -3,6 +3,8 @@ const cheerio = require('cheerio');
 
 require('dotenv').config();
 
+require('../../utils/axios.utils');
+
 const save = process.argv.includes('--save');
 
 const BANKS_IN_INDIA_DATA_SOURCE_URL =

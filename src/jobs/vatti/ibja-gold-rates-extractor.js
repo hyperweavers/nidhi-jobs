@@ -5,6 +5,8 @@ const { fromZonedTime } = require('date-fns-tz');
 
 require('dotenv').config();
 
+require('../../utils/axios.utils');
+
 const save = process.argv.includes('--save');
 
 const IBJA_GOLD_RATES_DATA_SOURCE_URL =

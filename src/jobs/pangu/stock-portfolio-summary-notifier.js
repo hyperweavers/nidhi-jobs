@@ -3,6 +3,8 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 
 require('dotenv').config();
 
+require('../../utils/axios.utils');
+
 const DB_URL = process.env.DB_URL || '';
 const DB_NAME = process.env.DB_NAME || '';
 const DB_COLLECTION = process.env.DB_COLLECTION || '';
@@ -22,6 +24,8 @@ const TABLE_STYLE =
   ':root { --primary-color: #e5e7eb; --secondary-color: #374151; --dt-status-up-color: #22c55e; --dt-status-down-color: #ef4444; --dt-background-color-container: #1f2937; --dt-background-color-header: #111827; --dt-padding: 6px; --dt-border-color: var(--secondary-color); --dt-text-color: var(--primary-color); --dt-even-row-color: var(--secondary-color); } table { font-family: sans-serif; background-color: var(--dt-background-color-container); color: var(--dt-text-color); margin: 0 auto; font-size: 12px; border-collapse: collapse; width: 400px; } table, table th, table td { padding: var(--dt-padding) var(--dt-padding); } table th { height: 32px; font-weight: bolder; border-bottom: solid 1px var(--dt-border-color); background-color: var(--dt-background-color-header); } table td { border-bottom: solid 1px var(--dt-border-color); } table td:not(:first-child) { text-align: center; } table tbody tr:nth-child(even) { background-color: var(--dt-even-row-color); } td div:last-child { padding-top: var(--dt-padding); } tr.stock td div.name { font-weight: bold; } tr.stock td div.name span { font-weight: normal; } td div span { padding-left: 2px; } .up { color: var(--dt-status-up-color); } .down { color: var(--dt-status-down-color); } .portfolio { background-color: var(--dt-background-color-header) !important; font-weight: bolder; }';
 
 const NEW_LINE = '%0A';
+
+
 
 const getNiftyFiftyData = async () => {
   const { data } = await axios.get(NIFTY_FIFTY_DATA_API_URL).catch((error) => {
