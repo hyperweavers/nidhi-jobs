@@ -44,11 +44,11 @@ async function extractInterestRates() {
       })),
     };
 
-    console.log(JSON.stringify(result, null, 2));
+    console.info(JSON.stringify(result, null, 2));
 
     if (save) {
       if (!POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB) {
-        console.log('Skipping save as JSON Blob is empty.');
+        console.error('Skipping save as JSON Blob is empty.');
         return;
       }
 
@@ -57,7 +57,7 @@ async function extractInterestRates() {
         result,
         { headers: { 'Content-Type': 'application/json' } }
       );
-      console.log(`POST request sent with response status code ${res.status}.`);
+      console.info(`POST request sent with response status code ${res.status}.`);
     }
   } catch (err) {
     console.error('Error extracting interest rates:', err.message);

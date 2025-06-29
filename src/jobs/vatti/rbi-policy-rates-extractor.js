@@ -66,7 +66,7 @@ async function extractPolicyRates() {
 async function saveToJsonBlob(data) {
   try {
     if (!RBI_POLICY_RATES_JSON_BLOB) {
-      console.log('Skipping save as JSON Blob is empty.');
+      console.error('Skipping save as JSON Blob is empty.');
       return;
     }
 
@@ -75,7 +75,7 @@ async function saveToJsonBlob(data) {
       data,
       { headers: { 'Content-Type': 'application/json' } }
     );
-    console.log(
+    console.info(
       `POST request to JSON Blob sent and received response status code ${response.status}.`
     );
     return true;
@@ -96,11 +96,11 @@ async function main() {
   const data = await extractPolicyRates();
 
   if (data.rates.length === 0) {
-    console.log('No data found');
+    console.error('No data found');
     return;
   }
 
-  console.log(JSON.stringify(data, null, 2));
+  console.info(JSON.stringify(data, null, 2));
 
   if (save) {
     await saveToJsonBlob(data);

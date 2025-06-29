@@ -51,15 +51,15 @@ async function scrapeBanks() {
     );
 
     if (hasEmptyArray) {
-      console.log('One of the bank type array is empty');
+      console.error('One of the bank type array is empty');
       return;
     }
 
-    console.log(JSON.stringify(result, null, 2));
+    console.info(JSON.stringify(result, null, 2));
 
     if (save) {
       if (!BANKS_IN_INDIA_JSON_BLOB) {
-        console.log('Skipping save as JSON Blob is empty.');
+        console.error('Skipping save as JSON Blob is empty.');
         return;
       }
 
@@ -72,7 +72,7 @@ async function scrapeBanks() {
           },
         }
       );
-      console.log(
+      console.info(
         `POST request to JSON Blob sent and received response status code ${response.status}.`
       );
     }
