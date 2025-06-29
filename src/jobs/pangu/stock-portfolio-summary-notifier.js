@@ -367,7 +367,19 @@ const convertHtmlToImage = async (html) => {
   return data?.url || '';
 };
 
-const sendMessage = async (documentUrl, caption) => {
+const sendMessage = async (caption) => {
+  const url = `https://api.telegram.org/bot${TELEGRAM_API_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${caption}&parse_mode=MarkdownV2`;
+
+  const { data } = await axios.post(url).catch((error) => {
+    console.error(error.toJSON());
+
+    return Promise.reject();
+  });
+
+  return !!data;
+};
+
+const sendMessageWithImage = async (documentUrl, caption) => {
   const url = `https://api.telegram.org/bot${TELEGRAM_API_TOKEN}/sendDocument?chat_id=${TELEGRAM_CHAT_ID}&document=${documentUrl}&caption=${caption}&parse_mode=MarkdownV2`;
 
   const { data } = await axios.post(url).catch((error) => {
@@ -419,9 +431,9 @@ const formatDate = (date) =>
         portfolioSummary,
         niftyFiftyData
       );
-      const imageUrl = await convertHtmlToImage(portfolioSummaryTable);
+      // const imageUrl = await convertHtmlToImage(portfolioSummaryTable);
 
-      if (imageUrl) {
+      // if (imageUrl) {
         const caption = `
           NIFTY: *${formatNumber(niftyFiftyData.change.percent)
             .replace('-', '\\-')
@@ -433,12 +445,13 @@ const formatDate = (date) =>
           .replace('.', '\\.')}%*
         `;
 
-        if (await sendMessage(imageUrl, caption)) {
+        // if (await sendMessageWithImage(imageUrl, caption)) {
+        if (await sendMessage(caption)) {
           console.info('Message Sent!');
         } else {
           console.error('Failed to send message!');
         }
-      }
+      // }
     }
   }
 })();
