@@ -40,7 +40,7 @@ async function scrapeGoldRates() {
       : 0;
 
     if (!lastUpdated) {
-      console.log('Last updated time not found');
+      console.error('Last updated time not found');
       return null;
     }
 
@@ -115,7 +115,7 @@ async function main() {
   const result = await scrapeGoldRates();
 
   if (!result || result.rates.length === 0) {
-    console.log('No data found');
+    console.error('No data found');
     return;
   }
 

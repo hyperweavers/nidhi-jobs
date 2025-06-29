@@ -48,7 +48,7 @@ async function extractInterestRates() {
 
     if (save) {
       if (!POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB) {
-        console.log('Skipping save as JSON Blob is empty.');
+        console.error('Skipping save as JSON Blob is empty.');
         return;
       }
 

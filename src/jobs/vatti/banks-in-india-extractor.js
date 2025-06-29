@@ -51,7 +51,7 @@ async function scrapeBanks() {
     );
 
     if (hasEmptyArray) {
-      console.log('One of the bank type array is empty');
+      console.error('One of the bank type array is empty');
       return;
     }
 
@@ -59,7 +59,7 @@ async function scrapeBanks() {
 
     if (save) {
       if (!BANKS_IN_INDIA_JSON_BLOB) {
-        console.log('Skipping save as JSON Blob is empty.');
+        console.error('Skipping save as JSON Blob is empty.');
         return;
       }
 
