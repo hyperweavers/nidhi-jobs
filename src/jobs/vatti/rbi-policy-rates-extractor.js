@@ -75,7 +75,7 @@ async function saveToJsonBlob(data) {
       data,
       { headers: { 'Content-Type': 'application/json' } }
     );
-    console.log(
+    console.info(
       `POST request to JSON Blob sent and received response status code ${response.status}.`
     );
     return true;
@@ -100,7 +100,7 @@ async function main() {
     return;
   }
 
-  console.log(JSON.stringify(data, null, 2));
+  console.info(JSON.stringify(data, null, 2));
 
   if (save) {
     await saveToJsonBlob(data);

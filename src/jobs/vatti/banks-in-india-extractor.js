@@ -55,7 +55,7 @@ async function scrapeBanks() {
       return;
     }
 
-    console.log(JSON.stringify(result, null, 2));
+    console.info(JSON.stringify(result, null, 2));
 
     if (save) {
       if (!BANKS_IN_INDIA_JSON_BLOB) {
@@ -72,7 +72,7 @@ async function scrapeBanks() {
           },
         }
       );
-      console.log(
+      console.info(
         `POST request to JSON Blob sent and received response status code ${response.status}.`
       );
     }
