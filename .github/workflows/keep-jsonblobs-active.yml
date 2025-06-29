@@ -1,0 +1,28 @@
+name: Keep JSONBlobs Active
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # Every 29 days at midnight UTC
+  schedule:
+    - cron: '0 0 */29 * *'
+
+jobs:
+  call-json-blob-apis:
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      BLOB1: ${{ vars.BANKS_IN_INDIA_DATA_SOURCE_URL }}
+      BLOB2: ${{ vars.IBJA_GOLD_RATES_DATA_SOURCE_URL }}
+      BLOB3: ${{ vars.POST_OFFICE_SAVINGS_SCHEMES_DATA_SOURCE_URL }}
+      BLOB4: ${{ vars.RBI_POLICY_RATES_DATA_SOURCE_URL }}
+    steps:
+      - name: Call JSONBlob APIs and print response
+        run: |
+          for blob in "$BLOB1" "$BLOB2" "$BLOB3" "$BLOB4"; do
+            url="https://jsonblob.com/api/jsonBlob/$blob"
+            echo "Calling $url"
+            curl -s "$url"
+            echo -e "\n---"
+          done
