@@ -17,6 +17,7 @@ jobs:
       BLOB2: ${{ secrets.IBJA_GOLD_RATES_JSON_BLOB }}
       BLOB3: ${{ secrets.POST_OFFICE_SAVINGS_SCHEMES_JSON_BLOB }}
       BLOB4: ${{ secrets.RBI_POLICY_RATES_JSON_BLOB }}
+      BLOB5: ${{ secrets.CURRENCY_LIST_JSON_BLOB }}
     steps:
       - name: Call JSONBlob APIs and print response
         run: |

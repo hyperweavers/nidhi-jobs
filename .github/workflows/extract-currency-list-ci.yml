@@ -1,0 +1,48 @@
+name: Currency List Extractor - CI
+
+on:
+  workflow_dispatch: # Manual trigger
+  pull_request:
+    branches:
+      - "**" # Runs on every branch
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    # Required dorny/paths-filter
+    permissions:
+      pull-requests: read
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+      # For pull requests it's not necessary to checkout the code
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/jobs/palan/currency-list-extractor.js'
+
+  extract-currency-list-ci:
+    needs: changes
+    if: ${{ needs.changes.outputs.src == 'true' }}
+    environment: development
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm" # Cache node_modules
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Extract
+        run: npm run palan:extract-currency-list
+        env:
+          CURRENCY_LIST_DATA_SOURCE_URL: ${{ vars.CURRENCY_LIST_DATA_SOURCE_URL }}
