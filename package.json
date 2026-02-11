@@ -32,7 +32,7 @@
     "palan:extract-currency-list": "node ./src/jobs/palan/currency-list-extractor.js"
   },
   "dependencies": {
-    "axios": "^1.9.0",
+    "axios": "^1.13.5",
     "axios-retry": "^4.5.0",
     "cheerio": "^1.0.0",
     "date-fns": "^4.1.0",
