@@ -1,0 +1,22 @@
+name: Keep GitHub Actions Active
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # Every 50 days at midnight UTC
+  schedule:
+    - cron: "0 0 */50 * *"
+
+jobs:
+  make-dummy-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make a dummy commit
+        run: |
+          date > keep-alive.txt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add keep-alive.txt
+          git commit -m "chore: github actions keep alive commit" || echo "No changes"
+          git push
