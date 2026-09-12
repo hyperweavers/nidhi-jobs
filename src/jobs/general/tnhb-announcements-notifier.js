@@ -177,8 +177,14 @@ const getDelta = (oldData, newData) => {
     .sort((a, b) => parseCreatedAt(b.created_at) - parseCreatedAt(a.created_at));
 };
 
-const escapeMarkdown = (value) =>
+const sanitizeText = (value) =>
   String(value || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const escapeMarkdown = (value) =>
+  sanitizeText(value)
     .replace(/\\/g, '\\\\')
     .replace(/\*/g, '\\*')
     .replace(/_/g, '\\_')
@@ -273,7 +279,16 @@ const sendMessage = async (text) => {
       disable_web_page_preview: false,
     })
     .catch((error) => {
-      console.error(error.toJSON ? error.toJSON() : error);
+      // Surface Telegram's error body (e.g. "Bad Request: can't parse entities…").
+      console.error(
+        JSON.stringify(
+          error.response && error.response.data
+            ? error.response.data
+            : error.toJSON
+              ? error.toJSON()
+              : String(error)
+        )
+      );
 
       return Promise.reject(error);
     });
