@@ -1,0 +1,50 @@
+name: TNHB Announcements Notifier - CI
+
+on:
+  workflow_dispatch: # To trigger the action manually
+  pull_request:
+    branches:
+      - "**" # Runs on every branch
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    # Required dorny/paths-filter
+    permissions:
+      pull-requests: read
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+      # For pull requests it's not necessary to checkout the code
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/jobs/general/tnhb-announcements-notifier.js'
+
+  notify-tnhb-announcements-ci:
+    needs: changes
+    if: ${{ needs.changes.outputs.src == 'true' }}
+    environment: development
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm" # Cache node_modules
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Notify
+        run: npm run general:notify-tnhb-announcements
+        env:
+          TNHB_ANNOUNCEMENTS_API_URL: ${{ vars.TNHB_ANNOUNCEMENTS_API_URL }}
+          TELEGRAM_API_TOKEN: ${{ secrets.TELEGRAM_API_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TNHB_TELEGRAM_CHAT_ID }}
