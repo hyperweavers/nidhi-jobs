@@ -13,10 +13,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js Environment
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: ".nvmrc"
           cache: "npm" # Cache node_modules
@@ -26,7 +26,7 @@ jobs:
 
       - name: Restore Cached Response
         id: restore-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: .cache/tnhb-announcements.json
           # Exact key is etag-based (tnhb-<etag>) and written by the save step.
@@ -46,7 +46,7 @@ jobs:
 
       - name: Save Cached Response
         if: ${{ steps.notify.outputs.changed == 'true' && steps.notify.outputs.cache_key != '' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: .cache/tnhb-announcements.json
           key: ${{ steps.notify.outputs.cache_key }}

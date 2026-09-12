@@ -133,7 +133,7 @@ const fetchAnnouncements = async (url, etag) => {
       const status = error.response ? error.response.status : 'NO_RESPONSE';
 
       console.error(
-        `Attempt ${attempt}/${MAX_ATTEMPTS} failed (status: ${status}): ${error.message}`,
+        `TNHB API request failed (attempt ${attempt}/${MAX_ATTEMPTS}, status: ${status}).`,
       );
 
       if (!retryable || attempt === MAX_ATTEMPTS) {
@@ -291,16 +291,20 @@ const sendMessage = async (html) => {
       disable_web_page_preview: true,
     })
     .catch((error) => {
-      // Surface Telegram's error body (e.g. "Bad Request: can't parse entities…").
+      // Custom message only: Telegram's one-line diagnosis when present,
+      // otherwise a short fallback. Never dump the axios error object
+      // (verbose, and its config echoes the bot token URL).
+      const apiBody =
+        error.response && error.response.data ? error.response.data : null;
+
       console.error(
-        JSON.stringify(
-          error.response && error.response.data
-            ? error.response.data
-            : error.toJSON
-              ? error.toJSON()
-              : String(error),
-        ),
+        apiBody && apiBody.description
+          ? `Telegram API error: ${apiBody.description}.`
+          : 'Telegram sendMessage request failed (no response).',
       );
+      // Log the payload that failed (token/chat_id live in the request
+      // URL/body, never in `text`, so this is safe to print).
+      console.error(`Telegram message payload: ${text}`);
 
       return Promise.reject(error);
     });
