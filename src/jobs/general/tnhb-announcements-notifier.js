@@ -177,14 +177,16 @@ const getDelta = (oldData, newData) => {
     .sort((a, b) => parseCreatedAt(b.created_at) - parseCreatedAt(a.created_at));
 };
 
-const escapeHtml = (value) =>
+const escapeMarkdown = (value) =>
   String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/\\/g, '\\\\')
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_')
+    .replace(/`/g, '\\`')
+    .replace(/\[/g, '\\[');
 
 const composeDigestMessages = (delta) => {
-  const header = `🏠 <b>TNHB Announcements (${delta.length} new)</b>`;
+  const header = `🏠 *TNHB Announcements (${delta.length} new)*`;
   const chunks = [];
   let current = header;
   let counter = 0;
@@ -208,22 +210,22 @@ const composeDigestMessages = (delta) => {
   );
 
   orderedGroups.forEach(([dateLabel, group]) => {
-    const dateBlock = `\n\n📅 <b>${escapeHtml(dateLabel)}</b>`;
+    const dateBlock = `\n\n📅 *${escapeMarkdown(dateLabel)}*`;
 
     if ((current + dateBlock).length > TELEGRAM_MAX_LENGTH) {
       chunks.push(current);
-      current = '🏠 <b>TNHB Announcements (contd.)</b>';
+      current = '🏠 *TNHB Announcements (contd.)*';
     }
     current += dateBlock;
 
     group.items.forEach((item) => {
       counter += 1;
 
-      const title = escapeHtml(item.title || 'Untitled');
-      const time = escapeHtml(formatTimeOnly(item.created_at));
+      const title = escapeMarkdown(item.title || 'Untitled');
+      const time = escapeMarkdown(formatTimeOnly(item.created_at));
       const pdfs = Array.isArray(item.pdfs_urls) ? item.pdfs_urls : [];
 
-      let block = `\n\n<b>${counter}. ${title}</b>\n🕐 ${time}`;
+      let block = `\n\n*${counter}. ${title}*\n🕐 ${time}`;
 
       if (pdfs.length > 0) {
         const links = pdfs
@@ -237,7 +239,7 @@ const composeDigestMessages = (delta) => {
             const label =
               pdfs.length > 1 ? `PDF ${pdfIndex + 1}` : 'PDF';
 
-            return `📎 <a href="${escapeHtml(url)}">${label}</a>`;
+            return `📎 [${label}](${url})`;
           })
           .filter(Boolean)
           .join(' | ');
@@ -249,7 +251,7 @@ const composeDigestMessages = (delta) => {
 
       if ((current + block).length > TELEGRAM_MAX_LENGTH) {
         chunks.push(current);
-        current = `🏠 <b>TNHB Announcements (contd.)</b>\n\n📅 <b>${escapeHtml(dateLabel)}</b>`;
+        current = `🏠 *TNHB Announcements (contd.)*\n\n📅 *${escapeMarkdown(dateLabel)}*`;
       }
       current += block;
     });
@@ -267,7 +269,7 @@ const sendMessage = async (text) => {
     .post(url, {
       chat_id: TELEGRAM_CHAT_ID,
       text,
-      parse_mode: 'HTML',
+      parse_mode: 'Markdown',
       disable_web_page_preview: false,
     })
     .catch((error) => {
