@@ -316,29 +316,28 @@ const sendMessage = async (text) => {
     process.exit(1);
   }
 
-  // First run (no cache): seed the cache file silently, notify nothing.
+  // First run (no cache): treat everything as new and notify.
+  let delta;
+  let changed;
   if (!cached) {
+    delta = [...(newData.notifications || [])].sort(
+      (a, b) => parseCreatedAt(b.created_at) - parseCreatedAt(a.created_at)
+    );
+    changed = true;
     writeCache(newEtag, newData);
     console.info(
-      `First run: cached ${newData.notifications.length} notification(s). No message sent.`
+      `First run: treating all ${delta.length} notification(s) as new.`
     );
-    appendGithubOutput([
-      `changed=true`,
-      `notified=false`,
-      `cache_key=tnhb-${sanitizeEtagForKey(newEtag)}`,
-    ]);
+  } else {
+    delta = getDelta(cached.data, newData);
+    const etagChanged = (cached.etag || '') !== (newEtag || '');
+    const payloadChanged =
+      JSON.stringify(cached.data) !== JSON.stringify(newData);
+    changed = etagChanged || payloadChanged;
 
-    return;
-  }
-
-  const delta = getDelta(cached.data, newData);
-  const etagChanged = (cached.etag || '') !== (newEtag || '');
-  const payloadChanged =
-    JSON.stringify(cached.data) !== JSON.stringify(newData);
-  const changed = etagChanged || payloadChanged;
-
-  if (changed) {
-    writeCache(newEtag, newData);
+    if (changed) {
+      writeCache(newEtag, newData);
+    }
   }
 
   appendGithubOutput([
