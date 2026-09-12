@@ -138,18 +138,30 @@ const parseCreatedAt = (value) => {
   return Number.isNaN(time) ? 0 : time;
 };
 
-const formatCreatedAt = (value) => {
+const formatDateOnly = (value) => {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return String(value || 'Unknown date');
+    return 'Unknown date';
   }
 
-  return date.toLocaleString('en-IN', {
+  return date.toLocaleDateString('en-IN', {
     timeZone: 'Asia/Kolkata',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+  });
+};
+
+const formatTimeOnly = (value) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value || 'Unknown time');
+  }
+
+  return date.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -175,42 +187,72 @@ const composeDigestMessages = (delta) => {
   const header = `🏠 <b>TNHB Announcements (${delta.length} new)</b>`;
   const chunks = [];
   let current = header;
+  let counter = 0;
 
-  delta.forEach((item, index) => {
-    const title = escapeHtml(item.title || 'Untitled');
-    const date = escapeHtml(formatCreatedAt(item.created_at));
-    const pdfs = Array.isArray(item.pdfs_urls) ? item.pdfs_urls : [];
+  // Group by IST calendar date, latest date first (delta is already latest-first).
+  const groups = new Map();
+  delta.forEach((item) => {
+    const dateLabel = formatDateOnly(item.created_at);
 
-    let block = `\n\n<b>${index + 1}. ${title}</b>\n📅 ${date}`;
-
-    if (pdfs.length > 0) {
-      const links = pdfs
-        .map((pdf, pdfIndex) => {
-          const url = pdf && pdf.local_url ? String(pdf.local_url) : '';
-
-          if (!url) {
-            return '';
-          }
-
-          const label =
-            pdfs.length > 1 ? `PDF ${pdfIndex + 1}` : 'PDF';
-
-          return `📎 <a href="${escapeHtml(url)}">${label}</a>`;
-        })
-        .filter(Boolean)
-        .join(' | ');
-
-      block += links ? `\n${links}` : '\nNo attachments';
-    } else {
-      block += '\nNo attachments';
+    if (!groups.has(dateLabel)) {
+      groups.set(dateLabel, { sortTime: 0, items: [] });
     }
 
-    if ((current + block).length > TELEGRAM_MAX_LENGTH) {
+    const group = groups.get(dateLabel);
+    group.sortTime = Math.max(group.sortTime, parseCreatedAt(item.created_at));
+    group.items.push(item);
+  });
+
+  const orderedGroups = [...groups.entries()].sort(
+    (a, b) => b[1].sortTime - a[1].sortTime
+  );
+
+  orderedGroups.forEach(([dateLabel, group]) => {
+    const dateBlock = `\n\n📅 <b>${escapeHtml(dateLabel)}</b>`;
+
+    if ((current + dateBlock).length > TELEGRAM_MAX_LENGTH) {
       chunks.push(current);
-      current = `🏠 <b>TNHB Announcements (contd.)</b>${block}`;
-    } else {
-      current += block;
+      current = '🏠 <b>TNHB Announcements (contd.)</b>';
     }
+    current += dateBlock;
+
+    group.items.forEach((item) => {
+      counter += 1;
+
+      const title = escapeHtml(item.title || 'Untitled');
+      const time = escapeHtml(formatTimeOnly(item.created_at));
+      const pdfs = Array.isArray(item.pdfs_urls) ? item.pdfs_urls : [];
+
+      let block = `\n\n<b>${counter}. ${title}</b>\n🕐 ${time}`;
+
+      if (pdfs.length > 0) {
+        const links = pdfs
+          .map((pdf, pdfIndex) => {
+            const url = pdf && pdf.local_url ? String(pdf.local_url) : '';
+
+            if (!url) {
+              return '';
+            }
+
+            const label =
+              pdfs.length > 1 ? `PDF ${pdfIndex + 1}` : 'PDF';
+
+            return `📎 <a href="${escapeHtml(url)}">${label}</a>`;
+          })
+          .filter(Boolean)
+          .join(' | ');
+
+        block += links ? `\n${links}` : '\nNo attachments';
+      } else {
+        block += '\nNo attachments';
+      }
+
+      if ((current + block).length > TELEGRAM_MAX_LENGTH) {
+        chunks.push(current);
+        current = `🏠 <b>TNHB Announcements (contd.)</b>\n\n📅 <b>${escapeHtml(dateLabel)}</b>`;
+      }
+      current += block;
+    });
   });
 
   chunks.push(current);
