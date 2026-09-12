@@ -33,12 +33,14 @@
     "palan:extract-currency-list": "node ./src/jobs/palan/currency-list-extractor.js"
   },
   "dependencies": {
-    "axios": "^1.9.0",
+    "axios": "^1.20.0",
     "axios-retry": "^4.5.0",
-    "cheerio": "^1.0.0",
-    "date-fns": "^4.1.0",
+    "cheerio": "^1.2.0",
+    "date-fns": "^4.4.0",
     "date-fns-tz": "^3.2.0",
-    "dotenv": "^16.5.0",
-    "mongodb": "^6.16.0"
+    "dompurify": "^3.4.15",
+    "dotenv": "^17.4.2",
+    "jsdom": "^30.0.1",
+    "mongodb": "^7.6.0"
   }
 }
