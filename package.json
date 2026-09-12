@@ -25,6 +25,7 @@
   "private": true,
   "scripts": {
     "pangu:notify-stock-portfolio-summary": "node ./src/jobs/pangu/stock-portfolio-summary-notifier.js",
+    "general:notify-tnhb-announcements": "node ./src/jobs/general/tnhb-announcements-notifier.js",
     "vatti:extract-post-office-savings-schemes": "node ./src/jobs/vatti/post-office-savings-schemes-extractor.js",
     "vatti:extract-rbi-policy-rates": "node ./src/jobs/vatti/rbi-policy-rates-extractor.js",
     "vatti:extract-banks-in-india": "node ./src/jobs/vatti/banks-in-india-extractor.js",
