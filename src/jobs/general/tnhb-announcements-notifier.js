@@ -63,6 +63,16 @@ const TELEGRAM_MAX_LENGTH = 4000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const escapeForCurl = (value) => String(value).replace(/'/g, `'\\''`);
+
+const buildTnhbRequestCurl = (url, headers) => {
+  const headerArgs = Object.entries(headers)
+    .map(([key, value]) => `  -H '${escapeForCurl(key)}: ${escapeForCurl(value)}' \\`)
+    .join('\n');
+
+  return `curl --url '${escapeForCurl(url)}' \\\n${headerArgs}`;
+};
+
 const sanitizeEtagForKey = (etag) =>
   String(etag || '')
     .replace(/^W\//, 'W-')
@@ -133,13 +143,17 @@ const appendGithubOutput = (lines) => {
 const fetchAnnouncements = async (url, etag) => {
   let lastError = null;
 
+  const requestHeaders = {
+    ...TNHB_API_HEADERS,
+    ...(etag ? { 'If-None-Match': etag } : {}),
+  };
+
+  console.info(`TNHB API request curl:\n${buildTnhbRequestCurl(url, requestHeaders)}`);
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
       const response = await axios.get(url, {
-        headers: {
-          ...TNHB_API_HEADERS,
-          ...(etag ? { 'If-None-Match': etag } : {}),
-        },
+        headers: requestHeaders,
         timeout: TNHB_HTTP_TIMEOUT_MS,
         // 304 is a valid "no change" outcome; resolve instead of throwing.
         validateStatus: (status) => status === 200 || status === 304,
