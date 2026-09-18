@@ -6,7 +6,7 @@ const createDOMPurify = require('dompurify');
 
 require('dotenv').config();
 
-require('../../utils/axios.utils');
+const { TNHB_HTTP_TIMEOUT_MS } = require('../../utils/axios.utils');
 
 // DOMPurify needs a DOM; jsdom provides one in Node.
 const DOMPurify = createDOMPurify(new JSDOM('').window);
@@ -117,6 +117,7 @@ const fetchAnnouncements = async (url, etag) => {
     try {
       const response = await axios.get(url, {
         headers: etag ? { 'If-None-Match': etag } : {},
+        timeout: TNHB_HTTP_TIMEOUT_MS,
         // 304 is a valid "no change" outcome; resolve instead of throwing.
         validateStatus: (status) => status === 200 || status === 304,
       });
