@@ -1,4 +1,5 @@
 const axios = require('axios');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
@@ -6,7 +7,7 @@ const createDOMPurify = require('dompurify');
 
 require('dotenv').config();
 
-require('../../utils/axios.utils');
+const { TNHB_HTTP_TIMEOUT_MS } = require('../../utils/axios.utils');
 
 // DOMPurify needs a DOM; jsdom provides one in Node.
 const DOMPurify = createDOMPurify(new JSDOM('').window);
@@ -35,6 +36,26 @@ const TELEGRAM_CHAT_ID =
 
 const CACHE_FILE_PATH = path.join('.cache', 'tnhb-announcements.json');
 
+// Browser-equivalent headers for the TNHB CMS API (from curl).
+// Required so the API treats the job like the tnhb.tn.gov.in frontend.
+const TNHB_API_HEADERS = {
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'en-IN,en;q=0.9,ta-IN;q=0.8,ta;q=0.7,en-GB;q=0.6,en-US;q=0.5',
+  Connection: 'keep-alive',
+  DNT: '1',
+  Origin: 'https://tnhb.tn.gov.in',
+  Referer: 'https://tnhb.tn.gov.in/',
+  'Sec-Fetch-Dest': 'empty',
+  'Sec-Fetch-Mode': 'cors',
+  'Sec-Fetch-Site': 'cross-site',
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
+  'sec-ch-ua':
+    '"Google Chrome";v="153", "Not_A Brand";v="8", "Chromium";v="153"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"',
+};
+
 const MAX_ATTEMPTS = 3;
 const BASE_DELAY_MS = 1000;
 // Chunk on composed HTML length; DOMPurify only ever shrinks it, so the
@@ -42,6 +63,16 @@ const BASE_DELAY_MS = 1000;
 const TELEGRAM_MAX_LENGTH = 4000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const escapeForCurl = (value) => String(value).replace(/'/g, `'\\''`);
+
+const buildTnhbRequestCurl = (url, headers) => {
+  const headerArgs = Object.entries(headers)
+    .map(([key, value]) => `  -H '${escapeForCurl(key)}: ${escapeForCurl(value)}' \\`)
+    .join('\n');
+
+  return `curl --url '${escapeForCurl(url)}' \\\n${headerArgs}`;
+};
 
 const sanitizeEtagForKey = (etag) =>
   String(etag || '')
@@ -113,10 +144,22 @@ const appendGithubOutput = (lines) => {
 const fetchAnnouncements = async (url, etag) => {
   let lastError = null;
 
+  // Always send If-None-Match; fall back to a random validator so no
+  // request goes out without one when there is no cached etag yet.
+  const effectiveEtag = etag || `"${crypto.randomUUID()}"`;
+
+  const requestHeaders = {
+    ...TNHB_API_HEADERS,
+    'If-None-Match': effectiveEtag,
+  };
+
+  console.info(`TNHB API request curl:\n${buildTnhbRequestCurl(url, requestHeaders)}`);
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
       const response = await axios.get(url, {
-        headers: etag ? { 'If-None-Match': etag } : {},
+        headers: requestHeaders,
+        timeout: TNHB_HTTP_TIMEOUT_MS,
         // 304 is a valid "no change" outcome; resolve instead of throwing.
         validateStatus: (status) => status === 200 || status === 304,
       });
