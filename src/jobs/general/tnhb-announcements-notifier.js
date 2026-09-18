@@ -1,4 +1,5 @@
 const axios = require('axios');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
@@ -143,9 +144,13 @@ const appendGithubOutput = (lines) => {
 const fetchAnnouncements = async (url, etag) => {
   let lastError = null;
 
+  // Always send If-None-Match; fall back to a random validator so no
+  // request goes out without one when there is no cached etag yet.
+  const effectiveEtag = etag || `"${crypto.randomUUID()}"`;
+
   const requestHeaders = {
     ...TNHB_API_HEADERS,
-    ...(etag ? { 'If-None-Match': etag } : {}),
+    'If-None-Match': effectiveEtag,
   };
 
   console.info(`TNHB API request curl:\n${buildTnhbRequestCurl(url, requestHeaders)}`);
