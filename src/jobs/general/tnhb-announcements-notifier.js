@@ -332,6 +332,8 @@ const sendMessage = async (html) => {
   const proxiedUrl = new URL(PROXY_API_URL);
   proxiedUrl.searchParams.set("api_key", PROXY_API_KEY);
   proxiedUrl.searchParams.set("url", TNHB_ANNOUNCEMENTS_API_URL);
+  proxiedUrl.searchParams.set("country_code", "in");
+  proxiedUrl.searchParams.set("keep_headers", "true");
 
   let response;
   try {
