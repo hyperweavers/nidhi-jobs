@@ -43,6 +43,8 @@ jobs:
           TNHB_ANNOUNCEMENTS_API_URL: ${{ vars.TNHB_ANNOUNCEMENTS_API_URL }}
           TELEGRAM_API_TOKEN: ${{ secrets.TELEGRAM_API_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TNHB_TELEGRAM_CHAT_ID }}
+          PROXY_API_URL: ${{ secrets.PROXY_API_URL }}
+          PROXY_API_KEY: ${{ secrets.PROXY_API_KEY }}
 
       - name: Save Cached Response
         if: ${{ steps.notify.outputs.changed == 'true' && steps.notify.outputs.cache_key != '' }}

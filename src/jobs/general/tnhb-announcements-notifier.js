@@ -32,6 +32,8 @@ const TELEGRAM_API_TOKEN =
   process.env.TNHB_TELEGRAM_API_TOKEN || process.env.TELEGRAM_API_TOKEN || '';
 const TELEGRAM_CHAT_ID =
   process.env.TNHB_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID || '';
+const PROXY_API_URL = process.env.PROXY_API_URL || '';
+const PROXY_API_KEY = process.env.PROXY_API_KEY || '';
 
 const CACHE_FILE_PATH = path.join('.cache', 'tnhb-announcements.json');
 
@@ -319,12 +321,22 @@ const sendMessage = async (html) => {
     process.exit(1);
   }
 
+  if (!PROXY_API_URL || !PROXY_API_KEY) {
+    console.error('PROXY_API_URL or PROXY_API_KEY is empty!');
+
+    process.exit(1);
+  }
+
   const cached = readCache();
+
+  const proxiedUrl = new URL(PROXY_API_URL);
+  proxiedUrl.searchParams.set("api_key", PROXY_API_KEY);
+  proxiedUrl.searchParams.set("url", TNHB_ANNOUNCEMENTS_API_URL);
 
   let response;
   try {
     response = await fetchAnnouncements(
-      TNHB_ANNOUNCEMENTS_API_URL,
+      proxiedUrl.toString(),
       cached && cached.etag ? cached.etag : '',
     );
   } catch (error) {
