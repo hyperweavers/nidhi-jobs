@@ -28,10 +28,10 @@ const TELEGRAM_ALLOWED_TAGS = [
 ];
 
 const TNHB_ANNOUNCEMENTS_API_URL = process.env.TNHB_ANNOUNCEMENTS_API_URL || '';
-const TELEGRAM_API_TOKEN =
-  process.env.TNHB_TELEGRAM_API_TOKEN || process.env.TELEGRAM_API_TOKEN || '';
-const TELEGRAM_CHAT_ID =
-  process.env.TNHB_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID || '';
+const TNHB_TELEGRAM_API_TOKEN =
+  process.env.TNHB_TELEGRAM_API_TOKEN || '';
+const TNHB_TELEGRAM_CHAT_ID =
+  process.env.TNHB_TELEGRAM_CHAT_ID || '';
 const PROXY_API_URL = process.env.PROXY_API_URL || '';
 const PROXY_API_KEY = process.env.PROXY_API_KEY || '';
 
@@ -282,12 +282,12 @@ const composeDigestMessages = (delta) => {
 };
 
 const sendMessage = async (html) => {
-  const url = `https://api.telegram.org/bot${TELEGRAM_API_TOKEN}/sendMessage`;
+  const url = `https://api.telegram.org/bot${TNHB_TELEGRAM_API_TOKEN}/sendMessage`;
   const text = toSafeTelegramHtml(html);
 
   const { data } = await axios
     .post(url, {
-      chat_id: TELEGRAM_CHAT_ID,
+      chat_id: TNHB_TELEGRAM_CHAT_ID,
       text,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
@@ -404,7 +404,7 @@ const sendMessage = async (html) => {
     return;
   }
 
-  if (!TELEGRAM_API_TOKEN || !TELEGRAM_CHAT_ID) {
+  if (!TNHB_TELEGRAM_API_TOKEN || !TNHB_TELEGRAM_CHAT_ID) {
     console.error('Telegram credentials are empty; cannot send digest.');
 
     process.exit(1);
