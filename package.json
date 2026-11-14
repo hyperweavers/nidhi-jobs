@@ -30,17 +30,22 @@
     "vatti:extract-rbi-policy-rates": "node ./src/jobs/vatti/rbi-policy-rates-extractor.js",
     "vatti:extract-banks-in-india": "node ./src/jobs/vatti/banks-in-india-extractor.js",
     "vatti:extract-ibja-gold-rates": "node ./src/jobs/vatti/ibja-gold-rates-extractor.js",
-    "palan:extract-currency-list": "node ./src/jobs/palan/currency-list-extractor.js"
+    "palan:extract-currency-list": "node ./src/jobs/palan/currency-list-extractor.js",
+    "update-deps:dry-run": "npm-check-updates",
+    "update-deps": "npm-check-updates -u && npm install"
   },
   "dependencies": {
-    "axios": "^1.20.0",
+    "axios": "^1.21.1",
     "axios-retry": "^4.5.0",
     "cheerio": "^1.2.0",
     "date-fns": "^4.4.0",
     "date-fns-tz": "^3.2.0",
-    "dompurify": "^3.4.15",
-    "dotenv": "^17.4.2",
-    "jsdom": "^30.0.1",
-    "mongodb": "^7.6.0"
+    "dompurify": "^3.4.18",
+    "dotenv": "^18.0.10",
+    "jsdom": "^31.0.1",
+    "mongodb": "^7.9.0"
+  },
+  "devDependencies": {
+    "npm-check-updates": "^23.1.1"
   }
 }
