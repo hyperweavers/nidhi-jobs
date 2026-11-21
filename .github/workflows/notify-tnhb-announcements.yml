@@ -29,9 +29,9 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: .cache/tnhb-announcements.json
-          # Exact key is etag-based (tnhb-<etag>) and written by the save step.
-          # `tnhb-announcements-current` never matches exactly, so this always
-          # falls back to the most recent `tnhb-*` entry via restore-keys.
+          # Exact key is id-based (tnhb-<maxId>-<timestamp>) and written by the
+          # save step. `tnhb-announcements-current` never matches exactly, so
+          # this always falls back to the most recent `tnhb-*` entry.
           key: tnhb-announcements-current
           restore-keys: |
             tnhb-
