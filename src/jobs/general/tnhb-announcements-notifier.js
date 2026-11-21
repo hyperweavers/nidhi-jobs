@@ -28,10 +28,8 @@ const TELEGRAM_ALLOWED_TAGS = [
 ];
 
 const TNHB_ANNOUNCEMENTS_API_URL = process.env.TNHB_ANNOUNCEMENTS_API_URL || '';
-const TNHB_TELEGRAM_API_TOKEN =
-  process.env.TNHB_TELEGRAM_API_TOKEN || '';
-const TNHB_TELEGRAM_CHAT_ID =
-  process.env.TNHB_TELEGRAM_CHAT_ID || '';
+const TNHB_TELEGRAM_API_TOKEN = process.env.TNHB_TELEGRAM_API_TOKEN || '';
+const TNHB_TELEGRAM_CHAT_ID = process.env.TNHB_TELEGRAM_CHAT_ID || '';
 const PROXY_API_URL = process.env.PROXY_API_URL || '';
 const PROXY_API_KEY = process.env.PROXY_API_KEY || '';
 
@@ -45,13 +43,16 @@ const TELEGRAM_MAX_LENGTH = 4000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const sanitizeEtagForKey = (etag) =>
-  String(etag || '')
-    .replace(/^W\//, 'W-')
-    .replace(/[^A-Za-z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 120) || 'no-etag';
+// Highest notification id is the monotonic "latest seen" watermark.
+const getMaxId = (data) => {
+  const notifications =
+    data && Array.isArray(data.notifications) ? data.notifications : [];
+  const ids = notifications
+    .map((item) => Number(item && item.id))
+    .filter((id) => Number.isFinite(id));
+
+  return ids.length > 0 ? Math.max(...ids) : 0;
+};
 
 const isRetryable = (error) => {
   if (!error.response) {
@@ -78,7 +79,14 @@ const readCache = () => {
       parsed.data &&
       Array.isArray(parsed.data.notifications)
     ) {
-      return { etag: parsed.etag || '', data: parsed.data };
+      // Legacy caches stored `etag` instead of `maxId`. Deriving the watermark
+      // from the saved snapshot keeps the first run after this change silent.
+      const storedMaxId = Number(parsed.maxId);
+      const maxId = Number.isFinite(storedMaxId)
+        ? storedMaxId
+        : getMaxId(parsed.data);
+
+      return { maxId, data: parsed.data };
     }
 
     return null;
@@ -89,11 +97,11 @@ const readCache = () => {
   }
 };
 
-const writeCache = (etag, data) => {
+const writeCache = (maxId, data) => {
   fs.mkdirSync(path.dirname(CACHE_FILE_PATH), { recursive: true });
   fs.writeFileSync(
     CACHE_FILE_PATH,
-    JSON.stringify({ etag: etag || '', data }, null, 2),
+    JSON.stringify({ maxId, data }, null, 2),
     'utf8',
   );
 };
@@ -112,24 +120,16 @@ const appendGithubOutput = (lines) => {
   }
 };
 
-const fetchAnnouncements = async (url, etag) => {
+const fetchAnnouncements = async (url) => {
   let lastError = null;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
-      const response = await axios.get(url, {
-        headers: etag ? { 'If-None-Match': etag } : {},
-        // 304 is a valid "no change" outcome; resolve instead of throwing.
-        validateStatus: (status) => status === 200 || status === 304,
-      });
+      const response = await axios.get(url);
 
       return response;
     } catch (error) {
       lastError = error;
-
-      if (error.response && error.response.status === 304) {
-        return error.response;
-      }
 
       const retryable = isRetryable(error);
       const status = error.response ? error.response.status : 'NO_RESPONSE';
@@ -173,13 +173,19 @@ const formatDateOnly = (value) => {
   });
 };
 
-const getDelta = (oldData, newData) => {
+const getDelta = (oldData, newData, previousMaxId) => {
   const oldIds = new Set(
     (oldData.notifications || []).map((item) => item && item.id),
   );
 
   return (newData.notifications || [])
-    .filter((item) => item && !oldIds.has(item.id))
+    .filter(
+      (item) =>
+        item &&
+        // Primary signal: id above the last-seen high-water mark.
+        // Also include unseen lower ids to catch backdated inserts.
+        (Number(item.id) > previousMaxId || !oldIds.has(item.id)),
+    )
     .sort(
       (a, b) => parseCreatedAt(b.created_at) - parseCreatedAt(a.created_at),
     );
@@ -330,31 +336,20 @@ const sendMessage = async (html) => {
   const cached = readCache();
 
   const proxiedUrl = new URL(PROXY_API_URL);
-  proxiedUrl.searchParams.set("api_key", PROXY_API_KEY);
-  proxiedUrl.searchParams.set("url", TNHB_ANNOUNCEMENTS_API_URL);
-  proxiedUrl.searchParams.set("country_code", "in");
-  proxiedUrl.searchParams.set("keep_headers", "true");
+  proxiedUrl.searchParams.set('api_key', PROXY_API_KEY);
+  proxiedUrl.searchParams.set('url', TNHB_ANNOUNCEMENTS_API_URL);
+  proxiedUrl.searchParams.set('country_code', 'in');
+  proxiedUrl.searchParams.set('keep_headers', 'true');
 
   let response;
   try {
-    response = await fetchAnnouncements(
-      proxiedUrl.toString(),
-      cached && cached.etag ? cached.etag : '',
-    );
+    response = await fetchAnnouncements(proxiedUrl.toString());
   } catch (error) {
     console.error('API failed after 3 attempts.');
 
     process.exit(1);
   }
 
-  if (response.status === 304) {
-    console.info('Not modified (304). No notification to send.');
-    appendGithubOutput(['changed=false', 'notified=false']);
-
-    return;
-  }
-
-  const newEtag = response.headers ? response.headers.etag || '' : '';
   const newData = response.data;
 
   if (!newData || !Array.isArray(newData.notifications)) {
@@ -365,35 +360,40 @@ const sendMessage = async (html) => {
     process.exit(1);
   }
 
+  const newMaxId = getMaxId(newData);
+  // GitHub cache keys are immutable, so every save needs a fresh key.
+  const cacheKey = `tnhb-${newMaxId}-${Date.now()}`;
+
   // First run (no cache): seed the cache file silently, notify nothing.
   if (!cached) {
-    writeCache(newEtag, newData);
+    writeCache(newMaxId, newData);
     console.info(
-      `First run: cached ${newData.notifications.length} notification(s). No message sent.`
+      `First run: cached ${newData.notifications.length} notification(s). No message sent.`,
     );
     appendGithubOutput([
-      `changed=true`,
-      `notified=false`,
-      `cache_key=tnhb-${sanitizeEtagForKey(newEtag)}`,
+      'changed=true',
+      'notified=false',
+      `cache_key=${cacheKey}`,
     ]);
 
     return;
   }
 
-  const delta = getDelta(cached.data, newData);
-  const etagChanged = (cached.etag || '') !== (newEtag || '');
+  const delta = getDelta(cached.data, newData, cached.maxId);
   const payloadChanged =
     JSON.stringify(cached.data) !== JSON.stringify(newData);
-  const changed = etagChanged || payloadChanged;
+  // Only new ids trigger a digest; payload edits refresh the snapshot without
+  // re-sending announcements that were already delivered.
+  const changed = delta.length > 0 || payloadChanged;
 
   if (changed) {
-    writeCache(newEtag, newData);
+    writeCache(Math.max(cached.maxId, newMaxId), newData);
   }
 
   appendGithubOutput([
     `changed=${changed}`,
     'notified=false',
-    `cache_key=tnhb-${sanitizeEtagForKey(newEtag)}`,
+    `cache_key=${cacheKey}`,
   ]);
 
   if (delta.length === 0) {
