@@ -1,31 +1,16 @@
-const axios = require('axios');
-const fs = require('fs');
 const path = require('path');
-const { JSDOM } = require('jsdom');
-const createDOMPurify = require('dompurify');
 
-require('dotenv').config();
-
-require('../../utils/axios.utils');
-
-// DOMPurify needs a DOM; jsdom provides one in Node.
-const DOMPurify = createDOMPurify(new JSDOM('').window);
-
-// Only tags Telegram's Bot API renders (parse_mode=HTML).
-const TELEGRAM_ALLOWED_TAGS = [
-  'b',
-  'strong',
-  'i',
-  'em',
-  'u',
-  'ins',
-  's',
-  'strike',
-  'del',
-  'a',
-  'code',
-  'pre',
-];
+const {
+  escapeHtml,
+  parseCreatedAt,
+  fetchWithRetry,
+  buildProxiedUrl,
+  readCache,
+  writeCache,
+  appendGithubOutput,
+  chunkDigest,
+  sendMessage,
+} = require('../../utils/tnhb-notifier.utils');
 
 const TNHB_ANNOUNCEMENTS_API_URL = process.env.TNHB_ANNOUNCEMENTS_API_URL || '';
 const TNHB_TELEGRAM_API_TOKEN = process.env.TNHB_TELEGRAM_API_TOKEN || '';
@@ -34,14 +19,6 @@ const PROXY_API_URL = process.env.PROXY_API_URL || '';
 const PROXY_API_KEY = process.env.PROXY_API_KEY || '';
 
 const CACHE_FILE_PATH = path.join('.cache', 'tnhb-announcements.json');
-
-const MAX_ATTEMPTS = 3;
-const BASE_DELAY_MS = 1000;
-// Chunk on composed HTML length; DOMPurify only ever shrinks it, so the
-// sent payload stays within Telegram's 4096-char limit.
-const TELEGRAM_MAX_LENGTH = 4000;
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Highest notification id is the monotonic "latest seen" watermark.
 const getMaxId = (data) => {
@@ -54,108 +31,28 @@ const getMaxId = (data) => {
   return ids.length > 0 ? Math.max(...ids) : 0;
 };
 
-const isRetryable = (error) => {
-  if (!error.response) {
-    return true; // Network error / timeout / DNS
-  }
-
-  const { status } = error.response;
-
-  return status === 408 || status === 429 || (status >= 500 && status <= 599);
-};
-
-const readCache = () => {
-  try {
-    if (!fs.existsSync(CACHE_FILE_PATH)) {
-      return null;
-    }
-
-    const raw = fs.readFileSync(CACHE_FILE_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
-
-    if (
+const readAnnouncementsCache = () => {
+  const cached = readCache(
+    CACHE_FILE_PATH,
+    (parsed) =>
       parsed &&
       typeof parsed === 'object' &&
       parsed.data &&
-      Array.isArray(parsed.data.notifications)
-    ) {
-      // Legacy caches stored `etag` instead of `maxId`. Deriving the watermark
-      // from the saved snapshot keeps the first run after this change silent.
-      const storedMaxId = Number(parsed.maxId);
-      const maxId = Number.isFinite(storedMaxId)
-        ? storedMaxId
-        : getMaxId(parsed.data);
-
-      return { maxId, data: parsed.data };
-    }
-
-    return null;
-  } catch (error) {
-    console.error(`Failed to read cache file: ${error.message}`);
-
-    return null;
-  }
-};
-
-const writeCache = (maxId, data) => {
-  fs.mkdirSync(path.dirname(CACHE_FILE_PATH), { recursive: true });
-  fs.writeFileSync(
-    CACHE_FILE_PATH,
-    JSON.stringify({ maxId, data }, null, 2),
-    'utf8',
+      Array.isArray(parsed.data.notifications),
   );
-};
 
-const appendGithubOutput = (lines) => {
-  const outputFile = process.env.GITHUB_OUTPUT;
-
-  if (!outputFile) {
-    return;
+  if (!cached) {
+    return null;
   }
 
-  try {
-    fs.appendFileSync(outputFile, `${lines.join('\n')}\n`, 'utf8');
-  } catch (error) {
-    console.error(`Failed to write GITHUB_OUTPUT: ${error.message}`);
-  }
-};
+  // Legacy caches stored `etag` instead of `maxId`. Deriving the watermark
+  // from the saved snapshot keeps the first run after this change silent.
+  const storedMaxId = Number(cached.maxId);
 
-const fetchAnnouncements = async (url) => {
-  let lastError = null;
-
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await axios.get(url);
-
-      return response;
-    } catch (error) {
-      lastError = error;
-
-      const retryable = isRetryable(error);
-      const status = error.response ? error.response.status : 'NO_RESPONSE';
-
-      console.error(
-        `TNHB API request failed (attempt ${attempt}/${MAX_ATTEMPTS}, status: ${status}).`,
-      );
-
-      if (!retryable || attempt === MAX_ATTEMPTS) {
-        throw error;
-      }
-
-      const delay = BASE_DELAY_MS * 2 ** (attempt - 1);
-
-      console.info(`Retrying in ${delay}ms (exponential backoff)...`);
-      await sleep(delay);
-    }
-  }
-
-  throw lastError;
-};
-
-const parseCreatedAt = (value) => {
-  const time = new Date(value).getTime();
-
-  return Number.isNaN(time) ? 0 : time;
+  return {
+    maxId: Number.isFinite(storedMaxId) ? storedMaxId : getMaxId(cached.data),
+    data: cached.data,
+  };
 };
 
 const formatDateOnly = (value) => {
@@ -191,31 +88,7 @@ const getDelta = (oldData, newData, previousMaxId) => {
     );
 };
 
-const sanitizeText = (value) =>
-  String(value || '')
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const escapeHtml = (value) =>
-  sanitizeText(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-
-// DOMPurify allowlist so only tags Telegram renders (parse_mode=HTML)
-// survive in the sent message.
-const toSafeTelegramHtml = (html) =>
-  DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: TELEGRAM_ALLOWED_TAGS,
-    ALLOWED_ATTR: ['href'],
-  });
-
 const composeDigestMessages = (delta) => {
-  const header = `🏠 <b>TNHB Announcements (${delta.length} new)</b>`;
-  const chunks = [];
-  let current = header;
   let counter = 0;
 
   // Group by IST calendar date, latest date first (delta is already latest-first).
@@ -235,17 +108,9 @@ const composeDigestMessages = (delta) => {
   const orderedGroups = [...groups.entries()].sort(
     (a, b) => b[1].sortTime - a[1].sortTime,
   );
-
-  orderedGroups.forEach(([dateLabel, group]) => {
+  const sections = orderedGroups.map(([dateLabel, group]) => {
     const dateBlock = `\n\n📅 <b>${escapeHtml(dateLabel)}</b>`;
-
-    if ((current + dateBlock).length > TELEGRAM_MAX_LENGTH) {
-      chunks.push(current);
-      current = '🏠 <b>TNHB Announcements (contd.)</b>';
-    }
-    current += dateBlock;
-
-    group.items.forEach((item) => {
+    const blocks = group.items.map((item) => {
       counter += 1;
 
       const title = escapeHtml(item.title || 'Untitled');
@@ -274,50 +139,17 @@ const composeDigestMessages = (delta) => {
         block += '\nNo attachments';
       }
 
-      if ((current + block).length > TELEGRAM_MAX_LENGTH) {
-        chunks.push(current);
-        current = `🏠 <b>TNHB Announcements (contd.)</b>\n\n📅 <b>${escapeHtml(dateLabel)}</b>`;
-      }
-      current += block;
+      return block;
     });
+
+    return { intro: dateBlock, continuationIntro: dateBlock, blocks };
   });
 
-  chunks.push(current);
-
-  return chunks;
-};
-
-const sendMessage = async (html) => {
-  const url = `https://api.telegram.org/bot${TNHB_TELEGRAM_API_TOKEN}/sendMessage`;
-  const text = toSafeTelegramHtml(html);
-
-  const { data } = await axios
-    .post(url, {
-      chat_id: TNHB_TELEGRAM_CHAT_ID,
-      text,
-      parse_mode: 'HTML',
-      disable_web_page_preview: true,
-    })
-    .catch((error) => {
-      // Custom message only: Telegram's one-line diagnosis when present,
-      // otherwise a short fallback. Never dump the axios error object
-      // (verbose, and its config echoes the bot token URL).
-      const apiBody =
-        error.response && error.response.data ? error.response.data : null;
-
-      console.error(
-        apiBody && apiBody.description
-          ? `Telegram API error: ${apiBody.description}.`
-          : 'Telegram sendMessage request failed (no response).',
-      );
-      // Log the payload that failed (token/chat_id live in the request
-      // URL/body, never in `text`, so this is safe to print).
-      console.error(`Telegram message payload: ${text}`);
-
-      return Promise.reject(error);
-    });
-
-  return !!(data && data.ok);
+  return chunkDigest({
+    header: `🏠 <b>TNHB Announcements (${delta.length} new)</b>`,
+    continuationHeader: '🏠 <b>TNHB Announcements (contd.)</b>',
+    sections,
+  });
 };
 
 (async () => {
@@ -333,17 +165,18 @@ const sendMessage = async (html) => {
     process.exit(1);
   }
 
-  const cached = readCache();
-
-  const proxiedUrl = new URL(PROXY_API_URL);
-  proxiedUrl.searchParams.set('api_key', PROXY_API_KEY);
-  proxiedUrl.searchParams.set('url', TNHB_ANNOUNCEMENTS_API_URL);
-  proxiedUrl.searchParams.set('country_code', 'in');
-  proxiedUrl.searchParams.set('keep_headers', 'true');
+  const cached = readAnnouncementsCache();
 
   let response;
   try {
-    response = await fetchAnnouncements(proxiedUrl.toString());
+    response = await fetchWithRetry(
+      buildProxiedUrl(
+        TNHB_ANNOUNCEMENTS_API_URL,
+        PROXY_API_URL,
+        PROXY_API_KEY,
+      ),
+      { label: 'TNHB API' },
+    );
   } catch (error) {
     console.error('API failed after 3 attempts.');
 
@@ -366,7 +199,7 @@ const sendMessage = async (html) => {
 
   // First run (no cache): seed the cache file silently, notify nothing.
   if (!cached) {
-    writeCache(newMaxId, newData);
+    writeCache(CACHE_FILE_PATH, { maxId: newMaxId, data: newData });
     console.info(
       `First run: cached ${newData.notifications.length} notification(s). No message sent.`,
     );
@@ -385,10 +218,7 @@ const sendMessage = async (html) => {
   // Only new ids trigger a digest; payload edits refresh the snapshot without
   // re-sending announcements that were already delivered.
   const changed = delta.length > 0 || payloadChanged;
-
-  if (changed) {
-    writeCache(Math.max(cached.maxId, newMaxId), newData);
-  }
+  const persistedMaxId = Math.max(cached.maxId, newMaxId);
 
   appendGithubOutput([
     `changed=${changed}`,
@@ -397,6 +227,11 @@ const sendMessage = async (html) => {
   ]);
 
   if (delta.length === 0) {
+    // Payload edits still refresh the snapshot, but no digest is sent.
+    if (changed) {
+      writeCache(CACHE_FILE_PATH, { maxId: persistedMaxId, data: newData });
+    }
+
     console.info(
       'Response changed but no new notification IDs. Nothing to send.',
     );
@@ -414,7 +249,11 @@ const sendMessage = async (html) => {
 
   for (const [index, message] of messages.entries()) {
     // eslint-disable-next-line no-await-in-loop
-    const sent = await sendMessage(message);
+    const sent = await sendMessage(
+      message,
+      TNHB_TELEGRAM_API_TOKEN,
+      TNHB_TELEGRAM_CHAT_ID,
+    );
 
     if (!sent) {
       console.error(
@@ -424,6 +263,10 @@ const sendMessage = async (html) => {
       process.exit(1);
     }
   }
+
+  // Advance the watermark only after every chunk was delivered, so a failed
+  // send is retried on the next run instead of losing the notification.
+  writeCache(CACHE_FILE_PATH, { maxId: persistedMaxId, data: newData });
 
   console.info(`Message sent! (${delta.length} new notification(s).)`);
   appendGithubOutput(['notified=true']);

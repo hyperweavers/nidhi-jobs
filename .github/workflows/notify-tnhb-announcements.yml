@@ -52,3 +52,50 @@ jobs:
         with:
           path: .cache/tnhb-announcements.json
           key: ${{ steps.notify.outputs.cache_key }}
+
+  notify-tnhb-upcoming-projects:
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm" # Cache node_modules
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Restore Cached Response
+        id: restore-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .cache/tnhb-upcoming-projects.json
+          # Exact key is count-based (tnhb_projects-<count>-<timestamp>) and
+          # written by the save step. `tnhb_projects-current` never matches
+          # exactly, so this falls back to the most recent `tnhb_projects-*`.
+          key: tnhb_projects-current
+          restore-keys: |
+            tnhb_projects-
+
+      - name: Notify
+        id: notify
+        run: npm run general:notify-tnhb-upcoming-projects
+        env:
+          TNHB_UPCOMING_PROJECTS_API_URL: ${{ vars.TNHB_UPCOMING_PROJECTS_API_URL }}
+          TNHB_INTEREST_REGISTRATION_URL: ${{ vars.TNHB_INTEREST_REGISTRATION_URL }}
+          TNHB_TELEGRAM_API_TOKEN: ${{ secrets.TNHB_TELEGRAM_API_TOKEN }}
+          TNHB_TELEGRAM_CHAT_ID: ${{ secrets.TNHB_TELEGRAM_CHAT_ID }}
+          PROXY_API_URL: ${{ secrets.PROXY_API_URL }}
+          PROXY_API_KEY: ${{ secrets.PROXY_API_KEY }}
+
+      - name: Save Cached Response
+        if: ${{ steps.notify.outputs.changed == 'true' && steps.notify.outputs.cache_key != '' }}
+        uses: actions/cache/save@v5
+        with:
+          path: .cache/tnhb-upcoming-projects.json
+          key: ${{ steps.notify.outputs.cache_key }}
